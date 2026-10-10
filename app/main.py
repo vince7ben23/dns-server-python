@@ -12,8 +12,8 @@ def main():
 
     while True:
         try:
-            buf, source = udp_socket.recvfrom(512)
-            logger.debug("Received %d bytes from %s: %r", len(buf), source, buf)
+            buf, client_addr = udp_socket.recvfrom(512)
+            logger.debug("Received %d bytes from %s: %r", len(buf), client_addr, buf)
             question = DNSQuestion(name="codecrafters.io")
             header = DNSHeader(
                 packet_identifier=1234,
@@ -22,7 +22,7 @@ def main():
             )
             response = header.to_bytes() + question.to_bytes()
 
-            udp_socket.sendto(response, source)
+            udp_socket.sendto(response, client_addr)
         except Exception as e:
             logger.exception("Error receiving data: %s", e)
             break
