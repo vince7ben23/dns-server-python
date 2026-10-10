@@ -1,9 +1,10 @@
 import socket
 
+from app.header import DNSHeader
+from app.libs.logger import logger
+
 
 def main():
-    # You can use print statements as follows for debugging, they'll be visible when running tests.
-    print("Logs from your program will appear here!")
 
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_socket.bind(("127.0.0.1", 2053))
@@ -11,12 +12,14 @@ def main():
     while True:
         try:
             buf, source = udp_socket.recvfrom(512)
-
-            response = b""
+            logger.debug("Received %d bytes from %s: %r", len(buf), source, buf)
+            response = DNSHeader(
+                packet_identifier=1234, query_response_indicator=1
+            ).to_bytes()
 
             udp_socket.sendto(response, source)
         except Exception as e:
-            print(f"Error receiving data: {e}")
+            logger.exception("Error receiving data: %s", e)
             break
 
 
