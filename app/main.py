@@ -1,7 +1,7 @@
 import socket
 
-from app.header import DNSHeader
 from app.libs.logger import logger
+from app.message.header import DNSHeader
 
 
 def main():

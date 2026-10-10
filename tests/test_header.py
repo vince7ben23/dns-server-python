@@ -1,6 +1,6 @@
 import unittest
 
-from app.header import DNSHeader
+from app.message.header import DNSHeader
 
 
 class TestDNSHeaderToBytes(unittest.TestCase):
