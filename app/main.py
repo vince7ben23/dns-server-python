@@ -2,6 +2,7 @@ import socket
 
 from app.libs.logger import logger
 from app.message.header import DNSHeader
+from app.message.question import DNSQuestion
 
 
 def main():
@@ -13,9 +14,13 @@ def main():
         try:
             buf, source = udp_socket.recvfrom(512)
             logger.debug("Received %d bytes from %s: %r", len(buf), source, buf)
-            response = DNSHeader(
-                packet_identifier=1234, query_response_indicator=1
-            ).to_bytes()
+            question = DNSQuestion(name="codecrafters.io")
+            header = DNSHeader(
+                packet_identifier=1234,
+                query_response_indicator=1,
+                question_count=1,
+            )
+            response = header.to_bytes() + question.to_bytes()
 
             udp_socket.sendto(response, source)
         except Exception as e:
