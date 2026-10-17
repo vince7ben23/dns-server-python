@@ -7,7 +7,11 @@ from app.request.parser import (
     QUESTION_TYPE_CLASS_SIZE,
     parse_header,
     parse_question,
+    parse_questions,
 )
+
+# 高 2 bits 為 11 的 length byte, 代表 compression pointer
+_COMPRESSION_POINTER_BYTE = 192
 
 
 def header_bytes(flags_high: int = 0, flags_low: int = 0) -> bytes:
@@ -98,6 +102,27 @@ class TestParseQuestion(unittest.TestCase):
     def test_rejects_malformed_name(self):
         with self.assertRaises(ValueError):
             parse_question(header_bytes() + b"\x03ab")
+
+
+class TestParseQuestions(unittest.TestCase):
+    def test_parses_compressed_second_question(self):
+        # 第 2 個 question 的 name 為 "mail" 加上指向第 1 個 name 的 pointer
+        first = DNSQuestion(name="codecrafters.io")
+        second_name = b"\x04mail" + bytes([_COMPRESSION_POINTER_BYTE, HEADER_SIZE])
+        data = header_bytes() + first.to_bytes() + second_name + bytes([0, 1, 0, 1])
+
+        self.assertEqual(
+            parse_questions(data, 2),
+            ([first, DNSQuestion(name="mail.codecrafters.io")], len(data)),
+        )
+
+    def test_zero_count_returns_no_questions(self):
+        self.assertEqual(parse_questions(header_bytes(), 0), ([], HEADER_SIZE))
+
+    def test_rejects_fewer_questions_than_count(self):
+        data = header_bytes() + DNSQuestion(name="a").to_bytes()
+        with self.assertRaises(ValueError):
+            parse_questions(data, 2)
 
 
 if __name__ == "__main__":

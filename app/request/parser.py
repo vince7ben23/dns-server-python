@@ -58,3 +58,14 @@ def parse_question(
         name=name, record_type=record_type, record_class=record_class
     )
     return question, offset + QUESTION_TYPE_CLASS_SIZE
+
+
+def parse_questions(
+    request: bytes, count: int, offset: int = HEADER_SIZE
+) -> tuple[list[DNSQuestion], int]:
+    """從 offset 依序解析 count 個 question, 回傳 (questions, 下一個 section 的 offset)."""
+    questions = []
+    for _ in range(count):
+        question, offset = parse_question(request, offset)
+        questions.append(question)
+    return questions, offset

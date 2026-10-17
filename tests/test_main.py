@@ -11,7 +11,9 @@ CLIENT_ADDR = ("127.0.0.1", 54321)
 REQUEST_HEADER = DNSHeader(packet_identifier=1234, question_count=1)
 REQUEST_QUESTION = DNSQuestion(name="codecrafters.io")
 REQUEST = REQUEST_HEADER.to_bytes() + REQUEST_QUESTION.to_bytes()
-EXPECTED_RESPONSE = build_response(REQUEST_HEADER, REQUEST_QUESTION)
+EXPECTED_RESPONSE = build_response(REQUEST_HEADER, [REQUEST_QUESTION])
+# 高 2 bits 為 11 的 length byte, 代表 compression pointer
+_COMPRESSION_POINTER_BYTE = 192
 
 
 def run_main_with(recv_results):
@@ -52,7 +54,24 @@ class TestMain(unittest.TestCase):
             ]
         )
 
-        expected = build_response(request_header, question)
+        expected = build_response(request_header, [question])
+        fake_socket.sendto.assert_called_once_with(expected, CLIENT_ADDR)
+
+    def test_replies_to_compressed_questions_uncompressed(self):
+        request_header = DNSHeader(packet_identifier=4321, question_count=2)
+        first = DNSQuestion(name="codecrafters.io")
+        # 第 2 個 question: "mail" 加上指向第 1 個 name (緊接在 header 之後) 的 pointer
+        second_bytes = (
+            b"\x04mail"
+            + bytes([_COMPRESSION_POINTER_BYTE, HEADER_SIZE])
+            + bytes([0, 1, 0, 1])
+        )
+        request = request_header.to_bytes() + first.to_bytes() + second_bytes
+        _, fake_socket = run_main_with([(request, CLIENT_ADDR), OSError("stop")])
+
+        expected = build_response(
+            request_header, [first, DNSQuestion(name="mail.codecrafters.io")]
+        )
         fake_socket.sendto.assert_called_once_with(expected, CLIENT_ADDR)
 
     def test_replies_to_each_request(self):

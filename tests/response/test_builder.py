@@ -7,11 +7,13 @@ from app.request.parser import HEADER_SIZE, parse_header
 from app.response.builder import build_response
 
 _RCODE_NOT_IMPLEMENTED = 4
-QUESTION = DNSQuestion(name="codecrafters.io")
+QUESTIONS = [DNSQuestion(name="codecrafters.io")]
 
 
-def response_header(request_header: DNSHeader) -> DNSHeader:
-    return parse_header(build_response(request_header, QUESTION))
+def response_header(
+    request_header: DNSHeader, questions: list[DNSQuestion] = QUESTIONS
+) -> DNSHeader:
+    return parse_header(build_response(request_header, questions))
 
 
 class TestBuildResponseHeader(unittest.TestCase):
@@ -49,25 +51,43 @@ class TestBuildResponseHeader(unittest.TestCase):
         self.assertEqual(header.recursion_available, 0)
         self.assertEqual(header.reserved, 0)
 
-    def test_counts_match_one_question_and_one_answer(self):
-        header = response_header(DNSHeader())
+    def test_counts_match_number_of_questions(self):
+        for count in (0, 1, 2):
+            questions = [DNSQuestion(name=f"q{i}.com") for i in range(count)]
+            with self.subTest(count=count):
+                header = response_header(DNSHeader(), questions)
 
-        self.assertEqual(header.question_count, 1)
-        self.assertEqual(header.answer_record_count, 1)
-        self.assertEqual(header.authority_record_count, 0)
-        self.assertEqual(header.additional_record_count, 0)
+                self.assertEqual(header.question_count, count)
+                self.assertEqual(header.answer_record_count, count)
+                self.assertEqual(header.authority_record_count, 0)
+                self.assertEqual(header.additional_record_count, 0)
+
+
+def answer_for(name: str) -> DNSAnswer:
+    return DNSAnswer(name=name, rdata_length=4, rdata=bytes([8, 8, 8, 8]))
 
 
 class TestBuildResponseBody(unittest.TestCase):
     def test_question_and_answer_mimic_request_name(self):
         question = DNSQuestion(name="example.com")
-        expected = (
-            question.to_bytes()
-            + DNSAnswer(
-                name="example.com", rdata_length=4, rdata=bytes([8, 8, 8, 8])
-            ).to_bytes()
+        expected = question.to_bytes() + answer_for("example.com").to_bytes()
+        self.assertEqual(
+            build_response(DNSHeader(), [question])[HEADER_SIZE:], expected
         )
-        self.assertEqual(build_response(DNSHeader(), question)[HEADER_SIZE:], expected)
+
+    def test_all_questions_come_before_their_answers(self):
+        # 順序為 Q1 Q2 A1 A2, name 皆不壓縮
+        first = DNSQuestion(name="codecrafters.io")
+        second = DNSQuestion(name="mail.codecrafters.io")
+        expected = (
+            first.to_bytes()
+            + second.to_bytes()
+            + answer_for(first.name).to_bytes()
+            + answer_for(second.name).to_bytes()
+        )
+        self.assertEqual(
+            build_response(DNSHeader(), [first, second])[HEADER_SIZE:], expected
+        )
 
 
 if __name__ == "__main__":
