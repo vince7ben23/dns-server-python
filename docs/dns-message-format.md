@@ -106,6 +106,8 @@ Response 裡同一個 name 常重複出現 (上例 question 和 answer 都是 `c
 
 本專案目前的做法: 解析任何 message 時都支援 pointer (`decode_domain_name`), 組 response 時一律不壓縮 (`build_response`).
 
+解析流程的細節與 byte 層級的例子見 [domain-name-decoding.md](domain-name-decoding.md).
+
 ## Forwarding
 
 指定 `--resolver` 時, server 不自己產生 answer, 而是轉送給上游 resolver:
