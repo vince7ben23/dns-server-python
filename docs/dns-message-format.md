@@ -104,16 +104,24 @@ Response 裡同一個 name 常重複出現 (上例 question 和 answer 都是 `c
 - 這也是一般 label 長度上限只有 63 (`0b00111111`) 的原因, 見 `app/message/domain_name.py`.
 - 兩個方向都能用, 只是實際上多半出現在 response.
 
-本專案目前的做法: 解析 request 時支援 pointer (`decode_domain_name`), 組 response 時一律不壓縮 (`build_response`).
+本專案目前的做法: 解析任何 message 時都支援 pointer (`decode_domain_name`), 組 response 時一律不壓縮 (`build_response`).
+
+## Forwarding
+
+指定 `--resolver` 時, server 不自己產生 answer, 而是轉送給上游 resolver:
+
+- 上游 resolver 只回應單一 question 的 query, 所以 request 有多個 question 時拆成多個 query, 再把 answers 依序合併成一個 response.
+- resolver reply 的 answer name 通常是指向它自己封包 offset 12 (question name) 的 pointer. 合併後的 response 裡, offset 12 永遠是第 1 個 question, 不能原樣複製 answer bytes; 所以先用 `parse_answer` 解開 name, 再由 `DNSAnswer.to_bytes()` 不壓縮重新編碼.
+- response 的 ID 仍照抄 client 的 request, 轉送用的 query ID 與它無關.
 
 ## 對應到程式結構
 
-因為格式共用, 程式依 "格式" 和 "方向" 分層:
+因為格式共用, 編碼與解析都放在 `message/`; 上層則依 runtime 角色分開:
 
 ```
-app/message/    各 section 的 dataclass 與編碼 (兩邊共用)
-app/request/    收到的 bytes → message 物件
-app/response/   決定回應內容 → bytes
+app/message/    各 section 的 dataclass, 編碼與解析 (兩個方向共用)
+app/server/     作為 server: 決定回應內容 → bytes
+app/client/     作為 client: 向上游 resolver 查詢
 ```
 
 ## 測試小提醒
