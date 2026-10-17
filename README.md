@@ -35,6 +35,41 @@ test_client.py           送任意 UDP payload 給 server 的小工具
 
 `server/` 與 `client/` 依 runtime 角色區分, 都只依賴 `message/`, 彼此不 import, 由 `main.py` 組合.
 
+### 運作流程
+
+以 `--resolver` 啟動時, 同一個 service 有兩個角色: 對 client 是 **DNS server**, 對上游 resolver 是 **DNS client** (forwarding server).
+
+```
+                     DNS server role                                DNS client role
+ ┌──────────────┐  query     ┌──────────────────────────────────┐  query      ┌────────────────────┐
+ │    client    │ ─────────▶ │           this service           │ ──────────▶ │ upstream resolver  │
+ │ dig / tester │ ◀───────── │  server/ ──Lookup──▶ client/     │ ◀────────── │ --resolver ip:port │
+ └──────────────┘  response  │  └── message/ (codec) ──┘        │  reply      └────────────────────┘
+                             └──────────────────────────────────┘
+```
+
+一個含 2 個 question 的 query 的處理順序:
+
+```
+ client               server/handler        client/forward            upstream resolver
+   │                        │                      │                           │
+   │ query                  │                      │                           │
+   │ ID=1234, Q1 Q2         │                      │                           │
+   │───────────────────────▶│ parse request        │                           │
+   │                        │── lookup(Q1) ───────▶│── query ID=0, Q1 ────────▶│
+   │                        │◀────────────── A1 ───│◀──────────── reply A1 ────│
+   │                        │── lookup(Q2) ───────▶│── query ID=0, Q2 ────────▶│
+   │                        │◀────────────── A2 ───│◀──────────── reply A2 ────│
+   │                        │ build_response       │                           │
+   │◀───────────────────────│                      │                           │
+   │ response               │                      │                           │
+   │ ID=1234, Q1 Q2 A1 A2   │                      │                           │
+```
+
+- 上游 resolver 只回應單一 question 的 query, 所以 handler 對每個 question 各呼叫一次 lookup, 再依序合併 answers.
+- response 的 ID 照抄 client 的 request (1234), 與轉送用的 query ID (0) 無關.
+- 未指定 `--resolver` 時, lookup 換成 `fixed_lookup`, 不經過 `client/`, answer 固定為 8.8.8.8.
+
 ## 開發
 
 需要先安裝 [`uv`](https://docs.astral.sh/uv/).
