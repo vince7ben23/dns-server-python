@@ -10,13 +10,9 @@ from app.server.response import (
     RCODE_NOT_IMPLEMENTED,
     build_response,
 )
+from tests.fixtures import a_record
 
 _QUESTIONS = [DNSQuestion(name="codecrafters.io")]
-
-
-def answer_for(name: str) -> DNSAnswer:
-    rdata = bytes([8, 8, 8, 8])  # 8.8.8.8
-    return DNSAnswer(name=name, rdata_length=len(rdata), rdata=rdata)
 
 
 def response_header(
@@ -25,7 +21,7 @@ def response_header(
     answers: list[DNSAnswer] | None = None,
 ) -> DNSHeader:
     if answers is None:
-        answers = [answer_for(question.name) for question in questions]
+        answers = [a_record(question.name, 1) for question in questions]
     return parse_header(build_response(request_header, questions, answers))
 
 
@@ -68,7 +64,7 @@ class TestBuildResponseHeader(unittest.TestCase):
     def test_counts_match_questions_and_answers(self):
         for question_count, answer_count in ((0, 0), (1, 1), (2, 1), (1, 2)):
             questions = [DNSQuestion(name=f"q{i}.com") for i in range(question_count)]
-            answers = [answer_for(f"a{i}.com") for i in range(answer_count)]
+            answers = [a_record(f"a{i}.com", 1) for i in range(answer_count)]
             with self.subTest(questions=question_count, answers=answer_count):
                 header = response_header(DNSHeader(), questions, answers)
 
@@ -81,7 +77,7 @@ class TestBuildResponseHeader(unittest.TestCase):
 class TestBuildResponseBody(unittest.TestCase):
     def test_question_echoed_and_answer_appended(self):
         question = DNSQuestion(name="example.com")
-        answer = answer_for("example.com")
+        answer = a_record("example.com", 1)
         self.assertEqual(
             build_response(DNSHeader(), [question], [answer])[HEADER_SIZE:],
             question.to_bytes() + answer.to_bytes(),
@@ -94,10 +90,10 @@ class TestBuildResponseBody(unittest.TestCase):
         expected = (
             first.to_bytes()
             + second.to_bytes()
-            + answer_for(first.name).to_bytes()
-            + answer_for(second.name).to_bytes()
+            + a_record(first.name, 1).to_bytes()
+            + a_record(second.name, 1).to_bytes()
         )
-        answers = [answer_for(first.name), answer_for(second.name)]
+        answers = [a_record(first.name, 1), a_record(second.name, 1)]
         self.assertEqual(
             build_response(DNSHeader(), [first, second], answers)[HEADER_SIZE:],
             expected,

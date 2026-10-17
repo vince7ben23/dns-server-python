@@ -1,0 +1,2 @@
+# UDP DNS message 的大小上限 (RFC 1035 §4.2.1)
+MAX_MESSAGE_SIZE = 512

@@ -1,9 +1,7 @@
 import unittest
 
 from app.message.header import HEADER_SIZE, DNSHeader
-
-# 16-bit 欄位可容納的最小溢位值
-_UINT16_OVERFLOW = 1 << 16
+from tests.fixtures import UINT16_OVERFLOW
 
 
 class TestDNSHeaderToBytes(unittest.TestCase):
@@ -77,7 +75,7 @@ class TestDNSHeaderValidation(unittest.TestCase):
         cases = [
             {"query_response_indicator": 2},
             {"operation_code": 16},
-            {"packet_identifier": _UINT16_OVERFLOW},
+            {"packet_identifier": UINT16_OVERFLOW},
             {"response_code": -1},
         ]
         for kwargs in cases:

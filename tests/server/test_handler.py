@@ -7,16 +7,10 @@ from app.message.parser import parse_header
 from app.message.question import DNSQuestion
 from app.server.handler import fixed_lookup, handle_query
 from app.server.response import build_response
+from tests.fixtures import COMPRESSION_POINTER_BYTE, a_record
 
-# 高 2 bits 為 11 的 length byte, 代表 compression pointer
-_COMPRESSION_POINTER_BYTE = 192
 # 非 standard query 的 opcode (2 = server status request)
 _OPCODE_STATUS = 2
-
-
-def answer_for(name: str, last_octet: int) -> DNSAnswer:
-    rdata = bytes([10, 0, 0, last_octet])
-    return DNSAnswer(name=name, rdata_length=len(rdata), rdata=rdata)
 
 
 class TestFixedLookup(unittest.TestCase):
@@ -34,8 +28,8 @@ class TestHandleQuery(unittest.TestCase):
         first = DNSQuestion(name="codecrafters.io")
         second = DNSQuestion(name="mail.codecrafters.io")
         answers = {
-            first.name: [answer_for(first.name, 1)],
-            second.name: [answer_for(second.name, 2)],
+            first.name: [a_record(first.name, 1)],
+            second.name: [a_record(second.name, 2)],
         }
         lookup = mock.Mock(side_effect=lambda question: answers[question.name])
 
@@ -57,7 +51,7 @@ class TestHandleQuery(unittest.TestCase):
         # 第 2 個 question: "mail" 加上指向第 1 個 name (緊接在 header 之後) 的 pointer
         second_bytes = (
             b"\x04mail"
-            + bytes([_COMPRESSION_POINTER_BYTE, HEADER_SIZE])
+            + bytes([COMPRESSION_POINTER_BYTE, HEADER_SIZE])
             + bytes([0, 1, 0, 1])
         )
         lookup = mock.Mock(return_value=[])
@@ -71,7 +65,7 @@ class TestHandleQuery(unittest.TestCase):
     def test_non_standard_query_skips_lookup(self):
         header = DNSHeader(operation_code=_OPCODE_STATUS, question_count=1)
         question = DNSQuestion(name="codecrafters.io")
-        lookup = mock.Mock(return_value=[answer_for(question.name, 1)])
+        lookup = mock.Mock(return_value=[a_record(question.name, 1)])
 
         response = handle_query(header.to_bytes() + question.to_bytes(), lookup)
 

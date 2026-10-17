@@ -1,9 +1,7 @@
 import unittest
 
 from app.message.domain_name import decode_domain_name, encode_domain_name
-
-# 高 2 bits 為 11 的 length byte, 代表 compression pointer
-_COMPRESSION_POINTER_BYTE = 192
+from tests.fixtures import COMPRESSION_POINTER_BYTE
 
 
 class TestEncodeDomainName(unittest.TestCase):
@@ -85,7 +83,7 @@ class TestDecodeDomainName(unittest.TestCase):
     def test_follows_compression_pointer_after_labels(self):
         # offset 0: "google.com"; 之後是 "mail" 加上指向 offset 0 的 pointer
         first = b"\x06google\x03com\x00"
-        data = first + b"\x04mail" + bytes([_COMPRESSION_POINTER_BYTE, 0])
+        data = first + b"\x04mail" + bytes([COMPRESSION_POINTER_BYTE, 0])
 
         self.assertEqual(
             decode_domain_name(data, len(first)), ("mail.google.com", len(data))
@@ -93,14 +91,14 @@ class TestDecodeDomainName(unittest.TestCase):
 
     def test_name_can_be_only_a_pointer(self):
         first = b"\x01a\x00"
-        data = first + bytes([_COMPRESSION_POINTER_BYTE, 0])
+        data = first + bytes([COMPRESSION_POINTER_BYTE, 0])
         self.assertEqual(decode_domain_name(data, len(first)), ("a", len(data)))
 
     def test_pointer_can_target_middle_of_earlier_name(self):
         # offset 7 是 "google.com" 中 "com" 的 length byte
         com_offset = 7
         first = b"\x06google\x03com\x00"
-        data = first + bytes([_COMPRESSION_POINTER_BYTE, com_offset])
+        data = first + bytes([COMPRESSION_POINTER_BYTE, com_offset])
         self.assertEqual(decode_domain_name(data, len(first)), ("com", len(data)))
 
     def test_follows_chained_pointers(self):
@@ -109,9 +107,9 @@ class TestDecodeDomainName(unittest.TestCase):
         data = (
             b"\x01a\x00"
             + b"\x01b"
-            + bytes([_COMPRESSION_POINTER_BYTE, 0])
+            + bytes([COMPRESSION_POINTER_BYTE, 0])
             + b"\x01c"
-            + bytes([_COMPRESSION_POINTER_BYTE, 3])
+            + bytes([COMPRESSION_POINTER_BYTE, 3])
         )
         self.assertEqual(decode_domain_name(data, c_offset), ("c.b.a", len(data)))
 
@@ -119,12 +117,12 @@ class TestDecodeDomainName(unittest.TestCase):
         # pointer bytes 193, 2 -> 去掉高 2 bits 後為 1 * 256 + 2 = 258
         target = 258
         name = b"\x01a\x00"
-        data = bytes(target) + name + bytes([_COMPRESSION_POINTER_BYTE + 1, 2])
+        data = bytes(target) + name + bytes([COMPRESSION_POINTER_BYTE + 1, 2])
         self.assertEqual(decode_domain_name(data, target + len(name)), ("a", len(data)))
 
     def test_rejects_pointer_to_itself_or_forward(self):
         for target in (0, 2):
-            data = bytes([_COMPRESSION_POINTER_BYTE, target]) + b"\x01a\x00"
+            data = bytes([COMPRESSION_POINTER_BYTE, target]) + b"\x01a\x00"
             with (
                 self.subTest(target=target),
                 self.assertRaisesRegex(ValueError, "backwards"),
@@ -133,7 +131,7 @@ class TestDecodeDomainName(unittest.TestCase):
 
     def test_rejects_truncated_pointer(self):
         with self.assertRaisesRegex(ValueError, "pointer is truncated"):
-            decode_domain_name(bytes([_COMPRESSION_POINTER_BYTE]), 0)
+            decode_domain_name(bytes([COMPRESSION_POINTER_BYTE]), 0)
 
     def test_rejects_reserved_label_length_bits(self):
         # 高 2 bits 為 01 與 10
@@ -148,7 +146,7 @@ class TestDecodeDomainName(unittest.TestCase):
         # 前後各 2 個 63-byte label, 後者指回前者, 展開後未含 null byte 已達 256 bytes
         label = bytes([63]) + b"a" * 63
         first = label * 2 + b"\x00"
-        data = first + label * 2 + bytes([_COMPRESSION_POINTER_BYTE, 0])
+        data = first + label * 2 + bytes([COMPRESSION_POINTER_BYTE, 0])
         with self.assertRaisesRegex(ValueError, "exceeds"):
             decode_domain_name(data, len(first))
 

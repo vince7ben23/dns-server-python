@@ -1,12 +1,11 @@
 import socket
 
 from app.message.answer import DNSAnswer
+from app.message.common import MAX_MESSAGE_SIZE
 from app.message.header import DNSHeader
 from app.message.parser import parse_answers, parse_header, parse_questions
 from app.message.question import DNSQuestion
 
-# UDP DNS message 的大小上限
-_MAX_MESSAGE_SIZE = 512
 # 轉送用的 query ID; 每次查詢用新的 socket 且只收一個 reply, 不需靠 ID 配對.
 # client 的 ID 由 server 端從 request header 放回 response
 _QUERY_ID = 0
@@ -53,7 +52,7 @@ class ForwardingLookup:
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as upstream:
                 upstream.settimeout(self.timeout)
                 upstream.sendto(query, self.address)
-                reply, _ = upstream.recvfrom(_MAX_MESSAGE_SIZE)
+                reply, _ = upstream.recvfrom(MAX_MESSAGE_SIZE)
             return parse_reply(reply)
         except (OSError, ValueError) as e:
             raise UpstreamError(

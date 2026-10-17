@@ -1,9 +1,7 @@
 import unittest
 
 from app.message.question import DNSQuestion
-
-# 16-bit 欄位可容納的最小溢位值
-_UINT16_OVERFLOW = 1 << 16
+from tests.fixtures import UINT16_OVERFLOW
 
 
 class TestDNSQuestionToBytes(unittest.TestCase):
@@ -23,7 +21,7 @@ class TestDNSQuestionToBytes(unittest.TestCase):
 class TestDNSQuestionValidation(unittest.TestCase):
     def test_rejects_field_overflow(self):
         cases = [
-            {"record_type": _UINT16_OVERFLOW},
+            {"record_type": UINT16_OVERFLOW},
             {"record_class": -1},
         ]
         for kwargs in cases:

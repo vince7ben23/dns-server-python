@@ -3,7 +3,11 @@ import socket
 
 from app.client.forward import ForwardingLookup, UpstreamError
 from app.libs.logger import logger
+from app.message.common import MAX_MESSAGE_SIZE
 from app.server.handler import Lookup, fixed_lookup, handle_query
+
+# server 監聽的位址
+_LISTEN_ADDRESS = ("127.0.0.1", 2053)
 
 
 def parse_address(value: str) -> tuple[str, int]:
@@ -25,11 +29,11 @@ def main(argv: list[str] | None = None):
     lookup: Lookup = ForwardingLookup(args.resolver) if args.resolver else fixed_lookup
 
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    udp_socket.bind(("127.0.0.1", 2053))
+    udp_socket.bind(_LISTEN_ADDRESS)
 
     while True:
         try:
-            buf, client_addr = udp_socket.recvfrom(512)
+            buf, client_addr = udp_socket.recvfrom(MAX_MESSAGE_SIZE)
             logger.debug("Received %d bytes from %s: %r", len(buf), client_addr, buf)
             try:
                 response = handle_query(buf, lookup)
@@ -38,7 +42,8 @@ def main(argv: list[str] | None = None):
                 logger.warning("Dropping malformed packet from %s: %s", client_addr, e)
                 continue
             except UpstreamError as e:
-                # 上游查不到就不回應, 讓 client 自行逾時重試
+                # 上游沒回應或回應無法使用時不回應, 讓 client 自行逾時重試.
+                # 上游回 0 筆 answer 不算錯誤, 仍會回應
                 logger.warning("Dropping query from %s: %s", client_addr, e)
                 continue
 

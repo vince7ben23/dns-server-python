@@ -1,6 +1,6 @@
 import unittest
 
-from app.message.answer import ANSWER_FIXED_FIELDS_SIZE, DNSAnswer
+from app.message.answer import ANSWER_FIXED_FIELDS_SIZE
 from app.message.header import HEADER_SIZE, DNSHeader
 from app.message.parser import (
     parse_answer,
@@ -10,9 +10,7 @@ from app.message.parser import (
     parse_questions,
 )
 from app.message.question import QUESTION_TYPE_CLASS_SIZE, DNSQuestion
-
-# 高 2 bits 為 11 的 length byte, 代表 compression pointer
-_COMPRESSION_POINTER_BYTE = 192
+from tests.fixtures import COMPRESSION_POINTER_BYTE, a_record
 
 
 def header_bytes(flags_high: int = 0, flags_low: int = 0) -> bytes:
@@ -109,7 +107,7 @@ class TestParseQuestions(unittest.TestCase):
     def test_parses_compressed_second_question(self):
         # 第 2 個 question 的 name 為 "mail" 加上指向第 1 個 name 的 pointer
         first = DNSQuestion(name="codecrafters.io")
-        second_name = b"\x04mail" + bytes([_COMPRESSION_POINTER_BYTE, HEADER_SIZE])
+        second_name = b"\x04mail" + bytes([COMPRESSION_POINTER_BYTE, HEADER_SIZE])
         data = header_bytes() + first.to_bytes() + second_name + bytes([0, 1, 0, 1])
 
         self.assertEqual(
@@ -124,11 +122,6 @@ class TestParseQuestions(unittest.TestCase):
         data = header_bytes() + DNSQuestion(name="a").to_bytes()
         with self.assertRaises(ValueError):
             parse_questions(data, 2)
-
-
-def a_record(name: str, last_octet: int) -> DNSAnswer:
-    rdata = bytes([10, 0, 0, last_octet])
-    return DNSAnswer(name=name, rdata_length=len(rdata), rdata=rdata)
 
 
 class TestParseAnswer(unittest.TestCase):
@@ -160,7 +153,7 @@ class TestParseAnswer(unittest.TestCase):
         question = DNSQuestion(name="codecrafters.io")
         answer = a_record("codecrafters.io", 1)
         compressed_answer = (
-            bytes([_COMPRESSION_POINTER_BYTE, HEADER_SIZE])
+            bytes([COMPRESSION_POINTER_BYTE, HEADER_SIZE])
             + answer.to_bytes()[len(b"\x0ccodecrafters\x02io\x00") :]
         )
         offset = HEADER_SIZE + len(question.to_bytes())

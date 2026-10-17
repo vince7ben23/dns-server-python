@@ -12,16 +12,12 @@ from app.message.answer import DNSAnswer
 from app.message.header import DNSHeader
 from app.message.parser import parse_header, parse_questions
 from app.message.question import DNSQuestion
+from tests.fixtures import a_record
 
 _RESOLVER_ADDR = ("127.0.0.1", 5353)
 _QUESTION = DNSQuestion(name="codecrafters.io")
 _PACKET_ID = 1234
 _TIMEOUT_SECONDS = 3.0
-
-
-def a_record(name: str, last_octet: int) -> DNSAnswer:
-    rdata = bytes([10, 0, 0, last_octet])
-    return DNSAnswer(name=name, rdata_length=len(rdata), rdata=rdata)
 
 
 def reply_bytes(answers: list[DNSAnswer], query_response_indicator: int = 1) -> bytes:

@@ -1,11 +1,7 @@
 import unittest
 
 from app.message.answer import DNSAnswer
-
-# 16-bit 欄位可容納的最小溢位值
-_UINT16_OVERFLOW = 1 << 16
-# 32-bit 欄位可容納的最小溢位值
-_UINT32_OVERFLOW = 1 << 32
+from tests.fixtures import UINT16_OVERFLOW, UINT32_OVERFLOW
 
 
 class TestDNSAnswerToBytes(unittest.TestCase):
@@ -48,9 +44,9 @@ class TestDNSAnswerToBytes(unittest.TestCase):
 class TestDNSAnswerValidation(unittest.TestCase):
     def test_rejects_field_overflow(self):
         cases = [
-            {"record_type": _UINT16_OVERFLOW},
+            {"record_type": UINT16_OVERFLOW},
             {"record_class": -1},
-            {"ttl": _UINT32_OVERFLOW},
+            {"ttl": UINT32_OVERFLOW},
             {"ttl": -1},
         ]
         for kwargs in cases:
@@ -61,8 +57,8 @@ class TestDNSAnswerValidation(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "16 bits"):
             DNSAnswer(
                 name="a",
-                rdata_length=_UINT16_OVERFLOW,
-                rdata=bytes(_UINT16_OVERFLOW),
+                rdata_length=UINT16_OVERFLOW,
+                rdata=bytes(UINT16_OVERFLOW),
             )
 
     def test_rejects_rdata_length_mismatch(self):

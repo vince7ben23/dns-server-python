@@ -11,6 +11,7 @@ app/
 │   ├── header.py        DNSHeader: 12-byte header 與 flags 編碼
 │   ├── question.py      DNSQuestion: question section
 │   ├── answer.py        DNSAnswer: answer section (resource record)
+│   ├── common.py        多個 section 共用的規格常數 (message 大小上限)
 │   ├── domain_name.py   domain name 的 label 編碼與解碼 (解碼支援 compression pointer)
 │   └── parser.py        bytes → message: 解析任一方向的 DNS message
 ├── server/              我們作為 DNS server 的行為
@@ -21,10 +22,10 @@ app/
 └── libs/
     └── logger.py        全域 logger
 tests/                   結構與 app/ 對應: tests/<pkg>/test_<mod>.py ↔ app/<pkg>/<mod>.py
+└── fixtures.py          多個測試共用的常數與 helper
 docs/                    學習筆記
 ├── dns-message-format.md   DNS message 格式, request 與 response 的異同
 └── socket-notes.md         TCP 與 UDP socket 的差異
-test_client.py           送任意 UDP payload 給 server 的小工具
 ```
 
 ### 分層
@@ -68,7 +69,7 @@ lookup 為 `ForwardingLookup`. 同一個 service 對 client 是 **DNS server**, 
 lookup 為 `fixed_lookup`, 只有 **DNS server** 角色, 不經過 `client/`, answer 固定為 8.8.8.8.
 
 ```
- client               server/handler        server/fixed_lookup
+ client               server/handler        server/handler.fixed_lookup
    ├─── DNS server role ────┤
    │                        │                      │
    │ query                  │                      │

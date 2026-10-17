@@ -3,11 +3,11 @@ from unittest import mock
 
 from app import main as main_module
 from app.client.forward import UpstreamError
-from app.message.answer import DNSAnswer
 from app.message.header import HEADER_SIZE, DNSHeader
 from app.message.question import DNSQuestion
 from app.server.handler import fixed_lookup
 from app.server.response import build_response
+from tests.fixtures import COMPRESSION_POINTER_BYTE, a_record
 
 _CLIENT_ADDR = ("127.0.0.1", 54321)
 _REQUEST_HEADER = DNSHeader(packet_identifier=1234, question_count=1)
@@ -16,8 +16,6 @@ _REQUEST = _REQUEST_HEADER.to_bytes() + _REQUEST_QUESTION.to_bytes()
 _EXPECTED_RESPONSE = build_response(
     _REQUEST_HEADER, [_REQUEST_QUESTION], fixed_lookup(_REQUEST_QUESTION)
 )
-# 高 2 bits 為 11 的 length byte, 代表 compression pointer
-_COMPRESSION_POINTER_BYTE = 192
 _RESOLVER_ADDR = ("127.0.0.1", 5353)
 
 
@@ -69,7 +67,7 @@ class TestMain(unittest.TestCase):
         # 第 2 個 question: "mail" 加上指向第 1 個 name (緊接在 header 之後) 的 pointer
         second_bytes = (
             b"\x04mail"
-            + bytes([_COMPRESSION_POINTER_BYTE, HEADER_SIZE])
+            + bytes([COMPRESSION_POINTER_BYTE, HEADER_SIZE])
             + bytes([0, 1, 0, 1])
         )
         request = request_header.to_bytes() + first.to_bytes() + second_bytes
@@ -132,10 +130,7 @@ class TestMainWithResolver(unittest.TestCase):
         return lookup_cls, fake_socket, logger
 
     def test_replies_with_answers_from_resolver(self):
-        rdata = bytes([10, 0, 0, 1])
-        answers = [
-            DNSAnswer(name=_REQUEST_QUESTION.name, rdata_length=len(rdata), rdata=rdata)
-        ]
+        answers = [a_record(_REQUEST_QUESTION.name, 1)]
         lookup_cls, fake_socket, _ = self.run_with_lookup(
             mock.Mock(return_value=answers),
             [(_REQUEST, _CLIENT_ADDR), OSError("stop")],
