@@ -3,6 +3,8 @@ from dataclasses import dataclass
 
 from app.message.domain_name import encode_domain_name
 
+# answer 在 name 之後, RDATA 之前的固定長度: type(2) + class(2) + TTL(4) + RDLENGTH(2)
+ANSWER_FIXED_FIELDS_SIZE = 10
 # 各欄位的 bit 寬度, 用於驗證數值範圍
 _FIELD_BITS = {
     "record_type": 16,

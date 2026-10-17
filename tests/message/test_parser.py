@@ -1,7 +1,14 @@
 import unittest
 
+from app.message.answer import ANSWER_FIXED_FIELDS_SIZE, DNSAnswer
 from app.message.header import HEADER_SIZE, DNSHeader
-from app.message.parser import parse_header, parse_question, parse_questions
+from app.message.parser import (
+    parse_answer,
+    parse_answers,
+    parse_header,
+    parse_question,
+    parse_questions,
+)
 from app.message.question import QUESTION_TYPE_CLASS_SIZE, DNSQuestion
 
 # 高 2 bits 為 11 的 length byte, 代表 compression pointer
@@ -117,6 +124,77 @@ class TestParseQuestions(unittest.TestCase):
         data = header_bytes() + DNSQuestion(name="a").to_bytes()
         with self.assertRaises(ValueError):
             parse_questions(data, 2)
+
+
+def a_record(name: str, last_octet: int) -> DNSAnswer:
+    rdata = bytes([10, 0, 0, last_octet])
+    return DNSAnswer(name=name, rdata_length=len(rdata), rdata=rdata)
+
+
+class TestParseAnswer(unittest.TestCase):
+    def test_round_trip_from_offset(self):
+        answer = a_record("codecrafters.io", 1)
+        offset = 5
+        data = bytes(offset) + answer.to_bytes()
+
+        self.assertEqual(parse_answer(data, offset), (answer, len(data)))
+
+    def test_fixed_fields_are_big_endian(self):
+        data = (
+            b"\x01a\x00"
+            + bytes([0, 5])  # type: 5
+            + bytes([1, 2])  # class: 1 * 256 + 2 = 258
+            + bytes([0, 1, 0, 0])  # TTL: 65536
+            + bytes([0, 2])  # RDLENGTH: 2
+            + bytes([7, 9])  # RDATA
+        )
+        answer, _ = parse_answer(data, 0)
+
+        self.assertEqual(answer.record_type, 5)
+        self.assertEqual(answer.record_class, 258)
+        self.assertEqual(answer.ttl, 65536)
+        self.assertEqual(answer.rdata, bytes([7, 9]))
+
+    def test_resolves_name_pointing_to_question(self):
+        # resolver 的 reply 中, answer name 通常是指向 question name 的 pointer
+        question = DNSQuestion(name="codecrafters.io")
+        answer = a_record("codecrafters.io", 1)
+        compressed_answer = (
+            bytes([_COMPRESSION_POINTER_BYTE, HEADER_SIZE])
+            + answer.to_bytes()[len(b"\x0ccodecrafters\x02io\x00") :]
+        )
+        offset = HEADER_SIZE + len(question.to_bytes())
+        data = header_bytes() + question.to_bytes() + compressed_answer
+
+        self.assertEqual(parse_answer(data, offset), (answer, len(data)))
+
+    def test_rejects_missing_fixed_fields(self):
+        data = b"\x01a\x00" + bytes(ANSWER_FIXED_FIELDS_SIZE - 1)
+        with self.assertRaisesRegex(ValueError, "fixed fields"):
+            parse_answer(data, 0)
+
+    def test_rejects_truncated_rdata(self):
+        data = a_record("a", 1).to_bytes()[:-1]
+        with self.assertRaisesRegex(ValueError, "rdata"):
+            parse_answer(data, 0)
+
+
+class TestParseAnswers(unittest.TestCase):
+    def test_parses_consecutive_answers(self):
+        answers = [a_record("a.com", 1), a_record("b.com", 2)]
+        data = b"".join(answer.to_bytes() for answer in answers)
+
+        self.assertEqual(parse_answers(data, 2, 0), (answers, len(data)))
+
+    def test_zero_count_returns_no_answers(self):
+        self.assertEqual(
+            parse_answers(header_bytes(), 0, HEADER_SIZE), ([], HEADER_SIZE)
+        )
+
+    def test_rejects_fewer_answers_than_count(self):
+        data = a_record("a", 1).to_bytes()
+        with self.assertRaises(ValueError):
+            parse_answers(data, 2, 0)
 
 
 if __name__ == "__main__":
