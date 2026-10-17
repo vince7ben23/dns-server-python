@@ -6,7 +6,7 @@ LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 
 
 class Logger:
-    """Process-wide singleton wrapper around a configured `logging.Logger`."""
+    """全域 singleton, 回傳設定好的 `logging.Logger`."""
 
     _instance: logging.Logger | None = None
 

@@ -3,27 +3,30 @@ from dataclasses import dataclass
 
 from app.message.domain_name import encode_domain_name
 
-# record_type 與 record_class 皆為 2-byte unsigned int
-_MAX_UINT16 = 0xFFFF
+# 各欄位的 bit 寬度, 用於驗證數值範圍
+_FIELD_BITS = {
+    "record_type": 16,
+    "record_class": 16,
+}
 
 
 @dataclass
 class DNSQuestion:
-    """DNS question section: Name + Type(2 bytes) + Class(2 bytes)."""
+    """DNS question section: Name + Type(2) + Class(2), 括號內為 byte 數."""
 
     name: str
     record_type: int = 1  # 1 = A record
     record_class: int = 1  # 1 = IN
 
     def __post_init__(self):
-        for field_name in ("record_type", "record_class"):
+        for field_name, bits in _FIELD_BITS.items():
             value = getattr(self, field_name)
-            if not 0 <= value <= _MAX_UINT16:
-                raise ValueError(f"{field_name}={value} does not fit in 16 bits")
+            if not 0 <= value < (1 << bits):
+                raise ValueError(f"{field_name}={value} does not fit in {bits} bits")
 
     def to_bytes(self) -> bytes:
         return encode_domain_name(self.name) + struct.pack(
-            "!2H",  # 2 unsigned short (16-bit) integers, big-endian
+            "!2H",  # type(16) class(16), big-endian
             self.record_type,
             self.record_class,
         )

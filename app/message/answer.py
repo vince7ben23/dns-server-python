@@ -14,7 +14,7 @@ _FIELD_BITS = {
 
 @dataclass
 class DNSAnswer:
-    """DNS answer section RR: Name + Type(2) + Class(2) + TTL(4) + RDLENGTH(2) + RDATA."""
+    """DNS answer section RR: Name + Type(2) + Class(2) + TTL(4) + RDLENGTH(2) + RDATA, 括號內為 byte 數."""
 
     name: str
     rdata_length: int  # RDLENGTH, 須等於 len(rdata)

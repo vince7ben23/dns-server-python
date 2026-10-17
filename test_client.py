@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""A simple UDP test client for poking the local DNS server.
+"""送 UDP 封包給本機 DNS server 並印出回應的小工具.
 
-Usage:
-    python3 test_client.py                 # send default packet to 127.0.0.1:2053
+用法:
+    python3 test_client.py                 # 送預設封包到 127.0.0.1:2053
     python3 test_client.py --host 127.0.0.1 --port 2053
-    python3 test_client.py --message hello # customize the payload content
+    python3 test_client.py --message hello # 自訂 payload 內容
 """
 
 import argparse
@@ -27,7 +27,7 @@ def main():
     )
     args = parser.parse_args()
 
-    # The first two bytes pretend to be a DNS transaction ID, followed by the custom message.
+    # 前 2 bytes 假裝是 DNS 的 transaction ID, 後面接自訂訊息
     payload = b"\x12\x34" + args.message.encode()
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

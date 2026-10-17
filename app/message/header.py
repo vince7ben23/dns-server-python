@@ -1,7 +1,7 @@
 import struct
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 
-# 每個欄位的 bit 寬度, 用於驗證數值範圍
+# 各欄位的 bit 寬度, 用於驗證數值範圍
 _FIELD_BITS = {
     "packet_identifier": 16,
     "query_response_indicator": 1,
@@ -21,7 +21,7 @@ _FIELD_BITS = {
 
 @dataclass
 class DNSHeader:
-    """DNS message header (12 bytes, big-endian)."""
+    """DNS message header: 固定 12 bytes, big-endian."""
 
     packet_identifier: int = 0
     query_response_indicator: int = 0
@@ -38,24 +38,18 @@ class DNSHeader:
     additional_record_count: int = 0
 
     def __post_init__(self):
-        for field in fields(self):
-            value = getattr(self, field.name)
-            bits = _FIELD_BITS[field.name]
+        for field_name, bits in _FIELD_BITS.items():
+            value = getattr(self, field_name)
             if not 0 <= value < (1 << bits):
-                raise ValueError(f"{field.name}={value} does not fit in {bits} bits")
+                raise ValueError(f"{field_name}={value} does not fit in {bits} bits")
 
     def to_bytes(self) -> bytes:
         # flags: QR(1) OPCODE(4) AA(1) TC(1) RD(1) | RA(1) Z(3) RCODE(4)
+        # 每個欄位的左移量 = 它右邊 (較低位) 所有欄位的 bit 寬度總和
         flags = (
-            (
-                self.query_response_indicator << 15
-            )  # 1 bits, 第一位移動到第十六位 => 左移 15 bits
-            | (
-                self.operation_code << 11
-            )  # 4 bits, (第一位, 第四位) 移動 (第十二位, 第十五位) => 左移 11 bits
-            | (
-                self.authoritative_answer << 10
-            )  # 1 bits, 第一位移動到第十一位 => 左移 10 bits
+            (self.query_response_indicator << 15)
+            | (self.operation_code << 11)
+            | (self.authoritative_answer << 10)
             | (self.truncation << 9)
             | (self.recursion_desired << 8)
             | (self.recursion_available << 7)
@@ -63,7 +57,7 @@ class DNSHeader:
             | self.response_code
         )
         return struct.pack(
-            "!6H",  # 6 unsigned short (16-bit) integers in network byte order, big-endian
+            "!6H",  # ID, flags 與 4 個 count, 各 16 bits, big-endian
             self.packet_identifier,
             flags,
             self.question_count,

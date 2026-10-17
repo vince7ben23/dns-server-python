@@ -6,7 +6,6 @@ from app.response.builder import build_response
 
 
 def main():
-
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_socket.bind(("127.0.0.1", 2053))
 
@@ -25,7 +24,8 @@ def main():
             response = build_response(request_header, question)
             udp_socket.sendto(response, client_addr)
         except Exception as e:
-            logger.exception("Error receiving data: %s", e)
+            # 壞封包以外的錯誤 (socket 錯誤, 程式 bug 等) 無法恢復, 記錄後停止 server
+            logger.exception("Unexpected error, stopping server: %s", e)
             break
 
 
