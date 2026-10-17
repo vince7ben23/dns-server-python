@@ -2,6 +2,7 @@ import unittest
 from unittest import mock
 
 from app import main as main_module
+from app.message.answer import DNSAnswer
 from app.message.header import DNSHeader
 from app.message.question import DNSQuestion
 
@@ -34,7 +35,7 @@ class TestMain(unittest.TestCase):
         )
         fake_socket.bind.assert_called_once_with(("127.0.0.1", 2053))
 
-    def test_replies_to_client_with_header_and_question(self):
+    def test_replies_to_client_with_header_question_and_answer(self):
         _, fake_socket = run_main_with([(b"query", CLIENT_ADDR), OSError("stop")])
 
         expected = (
@@ -42,8 +43,12 @@ class TestMain(unittest.TestCase):
                 packet_identifier=1234,
                 query_response_indicator=1,
                 question_count=1,
+                answer_record_count=1,
             ).to_bytes()
             + DNSQuestion(name="codecrafters.io").to_bytes()
+            + DNSAnswer(
+                name="codecrafters.io", length=4, data=b"\x08\x08\x08\x08"
+            ).to_bytes()
         )
         fake_socket.sendto.assert_called_once_with(expected, CLIENT_ADDR)
 

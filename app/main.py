@@ -1,6 +1,7 @@
 import socket
 
 from app.libs.logger import logger
+from app.message.answer import DNSAnswer
 from app.message.header import DNSHeader
 from app.message.question import DNSQuestion
 
@@ -15,12 +16,16 @@ def main():
             buf, client_addr = udp_socket.recvfrom(512)
             logger.debug("Received %d bytes from %s: %r", len(buf), client_addr, buf)
             question = DNSQuestion(name="codecrafters.io")
+            answer = DNSAnswer(
+                name="codecrafters.io", length=4, data=b"\x08\x08\x08\x08"
+            )
             header = DNSHeader(
                 packet_identifier=1234,
                 query_response_indicator=1,
                 question_count=1,
+                answer_record_count=1,
             )
-            response = header.to_bytes() + question.to_bytes()
+            response = header.to_bytes() + question.to_bytes() + answer.to_bytes()
 
             udp_socket.sendto(response, client_addr)
         except Exception as e:
