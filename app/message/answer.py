@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from app.message.domain_name import encode_domain_name
 
-# 各欄位的 bit 寬度，用於驗證數值範圍
+# 各欄位的 bit 寬度, 用於驗證數值範圍
 _FIELD_BITS = {
     "record_type": 16,
     "record_class": 16,
@@ -14,11 +14,11 @@ _FIELD_BITS = {
 
 @dataclass
 class DNSAnswer:
-    """DNS answer section RR: Name + Type(2) + Class(2) + TTL(4) + RDLENGTH(2) + RDATA。"""
+    """DNS answer section RR: Name + Type(2) + Class(2) + TTL(4) + RDLENGTH(2) + RDATA."""
 
     name: str
-    length: int  # RDLENGTH，須等於 len(data)
-    data: bytes  # RDATA；A record 為 4-byte IPv4 address
+    length: int  # RDLENGTH, 須等於 len(data)
+    data: bytes  # RDATA; A record 為 4-byte IPv4 address
     record_type: int = 1  # 1 = A record
     record_class: int = 1  # 1 = IN
     ttl: int = 60

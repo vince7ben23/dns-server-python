@@ -1,7 +1,7 @@
 import struct
 from dataclasses import dataclass, fields
 
-# 每個欄位的 bit 寬度，用於驗證數值範圍
+# 每個欄位的 bit 寬度, 用於驗證數值範圍
 _FIELD_BITS = {
     "packet_identifier": 16,
     "query_response_indicator": 1,
@@ -21,7 +21,7 @@ _FIELD_BITS = {
 
 @dataclass
 class DNSHeader:
-    """DNS message header (12 bytes, big-endian)。"""
+    """DNS message header (12 bytes, big-endian)."""
 
     packet_identifier: int = 0
     query_response_indicator: int = 0

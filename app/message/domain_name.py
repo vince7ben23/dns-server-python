@@ -1,12 +1,12 @@
-# 單一 label 長度上限（length byte 的高 2 bits 保留給 compression pointer）
+# 單一 label 長度上限 (length byte 的高 2 bits 保留給 compression pointer)
 _MAX_LABEL_LENGTH = 63
-# 整個 domain name 編碼後的長度上限（含 length bytes 與結尾的 null byte）
+# 整個 domain name 編碼後的長度上限 (含 length bytes 與結尾的 null byte)
 _MAX_NAME_LENGTH = 255
 
 
 def encode_domain_name(name: str) -> bytes:
-    """將 domain name 編碼為 label 序列：<length><content>...\\x00。"""
-    # root domain（"" 或 "."）沒有任何 label；FQDN 結尾的 "." 忽略
+    """將 domain name 編碼為 label 序列: <length><content>...\\x00."""
+    # root domain ("" 或 ".") 沒有任何 label; FQDN 結尾的 "." 忽略
     labels = name.removesuffix(".").split(".") if name not in ("", ".") else []
     encoded = bytearray()
     for label in labels:

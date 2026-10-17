@@ -9,7 +9,7 @@ _MAX_UINT16 = 0xFFFF
 
 @dataclass
 class DNSQuestion:
-    """DNS question section: Name + Type(2 bytes) + Class(2 bytes)。"""
+    """DNS question section: Name + Type(2 bytes) + Class(2 bytes)."""
 
     name: str
     record_type: int = 1  # 1 = A record

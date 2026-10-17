@@ -22,7 +22,7 @@ class TestDNSAnswerToBytes(unittest.TestCase):
         )
 
     def test_fixed_fields_are_big_endian(self):
-        # 用 16 進位讓每個 byte 都不同，方便直接對照輸出的 byte 順序
+        # 用 16 進位讓每個 byte 都不同, 方便直接對照輸出的 byte 順序
         answer = DNSAnswer(
             name="a",
             length=2,
@@ -31,7 +31,7 @@ class TestDNSAnswerToBytes(unittest.TestCase):
             record_class=0x0102,
             ttl=0x01020304,
         )
-        # name="a" 編碼後的長度：\x01 a \x00
+        # name="a" 編碼後的長度: \x01 a \x00
         name_len = 3
         self.assertEqual(
             answer.to_bytes()[name_len:],
