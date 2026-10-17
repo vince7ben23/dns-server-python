@@ -4,14 +4,18 @@ from app.message.answer import DNSAnswer
 from app.message.header import DNSHeader
 from app.message.question import DNSQuestion
 from app.request.parser import HEADER_SIZE, parse_header
-from app.response.builder import build_response
+from app.response.builder import (
+    OPCODE_STANDARD_QUERY,
+    RCODE_NO_ERROR,
+    RCODE_NOT_IMPLEMENTED,
+    build_response,
+)
 
-_RCODE_NOT_IMPLEMENTED = 4
-QUESTIONS = [DNSQuestion(name="codecrafters.io")]
+_QUESTIONS = [DNSQuestion(name="codecrafters.io")]
 
 
 def response_header(
-    request_header: DNSHeader, questions: list[DNSQuestion] = QUESTIONS
+    request_header: DNSHeader, questions: list[DNSQuestion] = _QUESTIONS
 ) -> DNSHeader:
     return parse_header(build_response(request_header, questions))
 
@@ -28,13 +32,14 @@ class TestBuildResponseHeader(unittest.TestCase):
         self.assertEqual(header.recursion_desired, 1)
 
     def test_standard_query_has_no_error(self):
-        self.assertEqual(response_header(DNSHeader(operation_code=0)).response_code, 0)
+        header = response_header(DNSHeader(operation_code=OPCODE_STANDARD_QUERY))
+        self.assertEqual(header.response_code, RCODE_NO_ERROR)
 
     def test_non_standard_query_is_not_implemented(self):
         for opcode in (1, 2, 15):
             with self.subTest(opcode=opcode):
                 header = response_header(DNSHeader(operation_code=opcode))
-                self.assertEqual(header.response_code, _RCODE_NOT_IMPLEMENTED)
+                self.assertEqual(header.response_code, RCODE_NOT_IMPLEMENTED)
 
     def test_fixed_flags_ignore_request(self):
         request = DNSHeader(
@@ -64,7 +69,8 @@ class TestBuildResponseHeader(unittest.TestCase):
 
 
 def answer_for(name: str) -> DNSAnswer:
-    return DNSAnswer(name=name, rdata_length=4, rdata=bytes([8, 8, 8, 8]))
+    rdata = bytes([8, 8, 8, 8])  # 8.8.8.8
+    return DNSAnswer(name=name, rdata_length=len(rdata), rdata=rdata)
 
 
 class TestBuildResponseBody(unittest.TestCase):

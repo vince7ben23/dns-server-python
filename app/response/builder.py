@@ -32,7 +32,11 @@ def build_response(
     )
 
     response_answers = [
-        DNSAnswer(name=question.name, rdata_length=4, rdata=b"\x08\x08\x08\x08")
+        DNSAnswer(
+            name=question.name,
+            rdata_length=len(ANSWER_RDATA),
+            rdata=ANSWER_RDATA,
+        )
         for question in request_questions
     ]
     return (
