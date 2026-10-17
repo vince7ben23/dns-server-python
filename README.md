@@ -37,21 +37,15 @@ test_client.py           送任意 UDP payload 給 server 的小工具
 
 ### 運作流程
 
-以 `--resolver` 啟動時, 同一個 service 有兩個角色: 對 client 是 **DNS server**, 對上游 resolver 是 **DNS client** (forwarding server).
+`handler` 對每個 question 各呼叫一次 lookup, 再依序合併 answers; response 的 ID 一律照抄 client 的 request. 是否指定 `--resolver` 只決定 lookup 用哪個實作. 以下都以一個含 2 個 question 的 query 為例.
 
-```
-                     DNS server role                                DNS client role
- ┌──────────────┐  query     ┌──────────────────────────────────┐  query      ┌────────────────────┐
- │    client    │ ─────────▶ │           this service           │ ──────────▶ │ upstream resolver  │
- │ dig / tester │ ◀───────── │  server/ ──Lookup──▶ client/     │ ◀────────── │ --resolver ip:port │
- └──────────────┘  response  │  └── message/ (codec) ──┘        │  reply      └────────────────────┘
-                             └──────────────────────────────────┘
-```
+#### 有 `--resolver`: forwarding server
 
-一個含 2 個 question 的 query 的處理順序:
+lookup 為 `ForwardingLookup`. 同一個 service 對 client 是 **DNS server**, 對上游 resolver 是 **DNS client**.
 
 ```
  client               server/handler        client/forward            upstream resolver
+   ├─── DNS server role ────┤                      ├───── DNS client role ─────┤
    │                        │                      │                           │
    │ query                  │                      │                           │
    │ ID=1234, Q1 Q2         │                      │                           │
@@ -66,9 +60,29 @@ test_client.py           送任意 UDP payload 給 server 的小工具
    │ ID=1234, Q1 Q2 A1 A2   │                      │                           │
 ```
 
-- 上游 resolver 只回應單一 question 的 query, 所以 handler 對每個 question 各呼叫一次 lookup, 再依序合併 answers.
-- response 的 ID 照抄 client 的 request (1234), 與轉送用的 query ID (0) 無關.
-- 未指定 `--resolver` 時, lookup 換成 `fixed_lookup`, 不經過 `client/`, answer 固定為 8.8.8.8.
+- 上游 resolver 只回應單一 question 的 query, 所以每個 question 拆成單獨的 query 轉送.
+- 轉送用的 query ID (0) 與 client 的 ID (1234) 無關.
+
+#### 沒有 `--resolver`
+
+lookup 為 `fixed_lookup`, 只有 **DNS server** 角色, 不經過 `client/`, answer 固定為 8.8.8.8.
+
+```
+ client               server/handler        server/fixed_lookup
+   ├─── DNS server role ────┤
+   │                        │                      │
+   │ query                  │                      │
+   │ ID=1234, Q1 Q2         │                      │
+   │───────────────────────▶│ parse request        │
+   │                        │── lookup(Q1) ───────▶│
+   │                        │◀──── A1 (8.8.8.8) ───│
+   │                        │── lookup(Q2) ───────▶│
+   │                        │◀──── A2 (8.8.8.8) ───│
+   │                        │ build_response       │
+   │◀───────────────────────│                      │
+   │ response               │                      │
+   │ ID=1234, Q1 Q2 A1 A2   │                      │
+```
 
 ## 開發
 
