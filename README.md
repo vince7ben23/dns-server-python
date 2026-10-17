@@ -6,7 +6,7 @@
 
 ```
 app/
-├── main.py              UDP server 迴圈: 收 bytes → 解析 request → 組 response → 回傳
+├── main.py              UDP server 迴圈: 收 bytes → handle_query → 回傳
 ├── message/             DNS 封包格式, request 與 response 共用
 │   ├── header.py        DNSHeader: 12-byte header 與 flags 編碼
 │   ├── question.py      DNSQuestion: question section
@@ -14,7 +14,8 @@ app/
 │   ├── domain_name.py   domain name 的 label 編碼與解碼 (解碼支援 compression pointer)
 │   └── parser.py        bytes → message: 解析任一方向的 DNS message
 ├── server/              我們作為 DNS server 的行為
-│   └── response.py      決定回應內容並編碼成 bytes
+│   ├── handler.py       解析 request, 逐一 lookup 每個 question, 組出 response
+│   └── response.py      決定 response header 並編碼成 bytes
 └── libs/
     └── logger.py        全域 logger
 tests/                   結構與 app/ 對應: tests/<pkg>/test_<mod>.py ↔ app/<pkg>/<mod>.py

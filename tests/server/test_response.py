@@ -14,15 +14,19 @@ from app.server.response import (
 _QUESTIONS = [DNSQuestion(name="codecrafters.io")]
 
 
-def response_header(
-    request_header: DNSHeader, questions: list[DNSQuestion] = _QUESTIONS
-) -> DNSHeader:
-    return parse_header(build_response(request_header, questions))
-
-
 def answer_for(name: str) -> DNSAnswer:
     rdata = bytes([8, 8, 8, 8])  # 8.8.8.8
     return DNSAnswer(name=name, rdata_length=len(rdata), rdata=rdata)
+
+
+def response_header(
+    request_header: DNSHeader,
+    questions: list[DNSQuestion] = _QUESTIONS,
+    answers: list[DNSAnswer] | None = None,
+) -> DNSHeader:
+    if answers is None:
+        answers = [answer_for(question.name) for question in questions]
+    return parse_header(build_response(request_header, questions, answers))
 
 
 class TestBuildResponseHeader(unittest.TestCase):
@@ -61,24 +65,26 @@ class TestBuildResponseHeader(unittest.TestCase):
         self.assertEqual(header.recursion_available, 0)
         self.assertEqual(header.reserved, 0)
 
-    def test_counts_match_number_of_questions(self):
-        for count in (0, 1, 2):
-            questions = [DNSQuestion(name=f"q{i}.com") for i in range(count)]
-            with self.subTest(count=count):
-                header = response_header(DNSHeader(), questions)
+    def test_counts_match_questions_and_answers(self):
+        for question_count, answer_count in ((0, 0), (1, 1), (2, 1), (1, 2)):
+            questions = [DNSQuestion(name=f"q{i}.com") for i in range(question_count)]
+            answers = [answer_for(f"a{i}.com") for i in range(answer_count)]
+            with self.subTest(questions=question_count, answers=answer_count):
+                header = response_header(DNSHeader(), questions, answers)
 
-                self.assertEqual(header.question_count, count)
-                self.assertEqual(header.answer_record_count, count)
+                self.assertEqual(header.question_count, question_count)
+                self.assertEqual(header.answer_record_count, answer_count)
                 self.assertEqual(header.authority_record_count, 0)
                 self.assertEqual(header.additional_record_count, 0)
 
 
 class TestBuildResponseBody(unittest.TestCase):
-    def test_question_and_answer_mimic_request_name(self):
+    def test_question_echoed_and_answer_appended(self):
         question = DNSQuestion(name="example.com")
-        expected = question.to_bytes() + answer_for("example.com").to_bytes()
+        answer = answer_for("example.com")
         self.assertEqual(
-            build_response(DNSHeader(), [question])[HEADER_SIZE:], expected
+            build_response(DNSHeader(), [question], [answer])[HEADER_SIZE:],
+            question.to_bytes() + answer.to_bytes(),
         )
 
     def test_all_questions_come_before_their_answers(self):
@@ -91,8 +97,10 @@ class TestBuildResponseBody(unittest.TestCase):
             + answer_for(first.name).to_bytes()
             + answer_for(second.name).to_bytes()
         )
+        answers = [answer_for(first.name), answer_for(second.name)]
         self.assertEqual(
-            build_response(DNSHeader(), [first, second])[HEADER_SIZE:], expected
+            build_response(DNSHeader(), [first, second], answers)[HEADER_SIZE:],
+            expected,
         )
 
 

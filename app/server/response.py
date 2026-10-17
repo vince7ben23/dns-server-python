@@ -5,16 +5,16 @@ from app.message.question import DNSQuestion
 OPCODE_STANDARD_QUERY = 0
 RCODE_NO_ERROR = 0
 RCODE_NOT_IMPLEMENTED = 4
-# 目前 answer 固定回 8.8.8.8
-_ANSWER_RDATA = bytes([8, 8, 8, 8])
 
 
 def build_response(
-    request_header: DNSHeader, request_questions: list[DNSQuestion]
+    request_header: DNSHeader,
+    request_questions: list[DNSQuestion],
+    answers: list[DNSAnswer],
 ) -> bytes:
     """依 request 的 header 與 questions 組出完整的 DNS response message.
 
-    question 原樣帶回 (不壓縮), 並為每個 question 回一筆 A record.
+    question 原樣帶回, answers 依序接在所有 question 之後, name 皆不壓縮.
     """
     if request_header.operation_code == OPCODE_STANDARD_QUERY:
         response_code = RCODE_NO_ERROR
@@ -28,19 +28,10 @@ def build_response(
         recursion_desired=request_header.recursion_desired,
         response_code=response_code,
         question_count=len(request_questions),
-        answer_record_count=len(request_questions),
+        answer_record_count=len(answers),
     )
-
-    response_answers = [
-        DNSAnswer(
-            name=question.name,
-            rdata_length=len(_ANSWER_RDATA),
-            rdata=_ANSWER_RDATA,
-        )
-        for question in request_questions
-    ]
     return (
         response_header.to_bytes()
         + b"".join(question.to_bytes() for question in request_questions)
-        + b"".join(answer.to_bytes() for answer in response_answers)
+        + b"".join(answer.to_bytes() for answer in answers)
     )

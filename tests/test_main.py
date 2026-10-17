@@ -4,13 +4,16 @@ from unittest import mock
 from app import main as main_module
 from app.message.header import HEADER_SIZE, DNSHeader
 from app.message.question import DNSQuestion
+from app.server.handler import fixed_lookup
 from app.server.response import build_response
 
 _CLIENT_ADDR = ("127.0.0.1", 54321)
 _REQUEST_HEADER = DNSHeader(packet_identifier=1234, question_count=1)
 _REQUEST_QUESTION = DNSQuestion(name="codecrafters.io")
 _REQUEST = _REQUEST_HEADER.to_bytes() + _REQUEST_QUESTION.to_bytes()
-_EXPECTED_RESPONSE = build_response(_REQUEST_HEADER, [_REQUEST_QUESTION])
+_EXPECTED_RESPONSE = build_response(
+    _REQUEST_HEADER, [_REQUEST_QUESTION], fixed_lookup(_REQUEST_QUESTION)
+)
 # 高 2 bits 為 11 的 length byte, 代表 compression pointer
 _COMPRESSION_POINTER_BYTE = 192
 
@@ -54,7 +57,7 @@ class TestMain(unittest.TestCase):
             ]
         )
 
-        expected = build_response(request_header, [question])
+        expected = build_response(request_header, [question], fixed_lookup(question))
         fake_socket.sendto.assert_called_once_with(expected, _CLIENT_ADDR)
 
     def test_replies_to_compressed_questions_uncompressed(self):
@@ -69,8 +72,11 @@ class TestMain(unittest.TestCase):
         request = request_header.to_bytes() + first.to_bytes() + second_bytes
         _, fake_socket, _ = run_main_with([(request, _CLIENT_ADDR), OSError("stop")])
 
+        second = DNSQuestion(name="mail.codecrafters.io")
         expected = build_response(
-            request_header, [first, DNSQuestion(name="mail.codecrafters.io")]
+            request_header,
+            [first, second],
+            fixed_lookup(first) + fixed_lookup(second),
         )
         fake_socket.sendto.assert_called_once_with(expected, _CLIENT_ADDR)
 
