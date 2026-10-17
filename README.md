@@ -1,35 +1,46 @@
-[![progress-banner](https://backend.codecrafters.io/progress/dns-server/b5c7cb0a-9f82-4c76-adf4-03e2d094caef)](https://app.codecrafters.io/users/vince7ben23?r=2qF)
+# DNS Server
 
-This is a starting point for Python solutions to the
-["Build Your Own DNS server" Challenge](https://app.codecrafters.io/courses/dns-server/overview).
+[CodeCrafters "Build Your Own DNS server"](https://app.codecrafters.io/courses/dns-server/overview) 的實作. Server 在 `127.0.0.1:2053` 監聽 UDP, 解析收到的 DNS query 並回傳 DNS response.
 
-In this challenge, you'll build a DNS server that's capable of parsing and
-creating DNS packets, responding to DNS queries, handling various record types
-and doing recursive resolve. Along the way we'll learn about the DNS protocol,
-DNS packet format, root servers, authoritative servers, forwarding servers,
-various record types (A, AAAA, CNAME, etc) and more.
+## 專案結構
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
-
-# Passing the first stage
-
-The entry point for your `your_program.sh` implementation is in `app/main.py`.
-Study and uncomment the relevant code, and then run the command below to execute
-the tests on our servers:
-
-```sh
-codecrafters submit
+```
+app/
+├── main.py              UDP server 迴圈: 收 bytes → 解析 request → 組 response → 回傳
+├── message/             DNS 封包格式, request 與 response 共用
+│   ├── header.py        DNSHeader: 12-byte header 與 flags 編碼
+│   ├── question.py      DNSQuestion: question section
+│   ├── answer.py        DNSAnswer: answer section (resource record)
+│   └── domain_name.py   domain name 的 label 編碼
+├── request/
+│   └── parser.py        bytes → message: 解析收到的 query
+├── response/
+│   └── builder.py       message → bytes: 決定回應內容並編碼
+└── libs/
+    └── logger.py        全域 logger
+tests/                   結構與 app/ 對應: tests/<pkg>/test_<mod>.py ↔ app/<pkg>/<mod>.py
+docs/                    學習筆記
+├── dns-message-format.md   DNS message 格式, request 與 response 的異同
+└── socket-notes.md         TCP 與 UDP socket 的差異
+test_client.py           送任意 UDP payload 給 server 的小工具
 ```
 
-Time to move on to the next stage!
+### 分層
 
-# Stage 2 & beyond
+- **`message/`**: DNS query 與 response 是同一種 message 格式 (RFC 1035 §4.1), 方向只靠 header 的 QR 等欄位區分, 所以各 section 的 dataclass 與編碼放在這裡共用.
+- **`request/`**: 處理收到的 bytes, 轉成 `message/` 的物件.
+- **`response/`**: 依 request 決定要回什麼, 再編碼成 bytes.
 
-Note: This section is for stages 2 and beyond.
+## 開發
 
-1. Ensure you have `uv` installed locally
-1. Run `./your_program.sh` to run your program, which is implemented in
-   `app/main.py`.
-1. Run `codecrafters submit` to submit your solution to CodeCrafters. Test
-   output will be streamed to your terminal.
+需要先安裝 [`uv`](https://docs.astral.sh/uv/).
+
+```sh
+./your_program.sh                                    # 啟動 server
+dig @127.0.0.1 -p 2053 +noedns codecrafters.io       # 送一個 query 測試
+uv run python -m unittest discover -s tests -t .     # 跑測試
+uv run ruff check && uv run ruff format              # lint 與 format
+codecrafters submit                                  # 提交到 CodeCrafters
+```
+
+pre-commit 會跑 ruff check, ruff format 與 unit tests (見 `.pre-commit-config.yaml`).
