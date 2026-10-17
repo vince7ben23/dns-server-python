@@ -41,7 +41,7 @@ def decode_domain_name(data: bytes, offset: int) -> tuple[str, int]:
         if offset >= len(data):
             raise ValueError("domain name is missing its null terminator")
         length = data[offset]
-        if length & _POINTER_FLAG == _POINTER_FLAG:
+        if (length & _POINTER_FLAG) == _POINTER_FLAG:
             if offset + _POINTER_SIZE > len(data):
                 raise ValueError("compression pointer is truncated")
             # 去掉高 2 bits 後, 與下一個 byte 組成 14-bit 的目標 offset
