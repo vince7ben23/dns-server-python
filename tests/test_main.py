@@ -2,6 +2,8 @@ import unittest
 from unittest import mock
 
 from app import main as main_module
+from app.client.forward import UpstreamError
+from app.message.answer import DNSAnswer
 from app.message.header import HEADER_SIZE, DNSHeader
 from app.message.question import DNSQuestion
 from app.server.handler import fixed_lookup
@@ -16,10 +18,11 @@ _EXPECTED_RESPONSE = build_response(
 )
 # 高 2 bits 為 11 的 length byte, 代表 compression pointer
 _COMPRESSION_POINTER_BYTE = 192
+_RESOLVER_ADDR = ("127.0.0.1", 5353)
 
 
-def run_main_with(recv_results):
-    """用假 socket 執行 `main()`, `recvfrom` 依序回傳 `recv_results` 的每一項.
+def run_main_with(recv_results, argv=()):
+    """用假 socket 執行 `main(argv)`, `recvfrom` 依序回傳 `recv_results` 的每一項.
 
     `main()` 是無窮迴圈, 最後一項應為 exception 讓它跳出.
     回傳 (socket class mock, 假 socket, logger mock).
@@ -32,7 +35,7 @@ def run_main_with(recv_results):
         ) as socket_cls,
         mock.patch.object(main_module, "logger") as logger,
     ):
-        main_module.main()
+        main_module.main(list(argv))
     return socket_cls, fake_socket, logger
 
 
@@ -111,6 +114,63 @@ class TestMain(unittest.TestCase):
 
         logger.exception.assert_called_once()
         fake_socket.sendto.assert_not_called()
+
+
+class TestMainWithResolver(unittest.TestCase):
+    def run_with_lookup(self, lookup, recv_results):
+        """以 --resolver 執行 main, ForwardingLookup 換成 `lookup`.
+
+        回傳 (ForwardingLookup class mock, 假 socket, logger mock).
+        """
+        resolver_arg = f"{_RESOLVER_ADDR[0]}:{_RESOLVER_ADDR[1]}"
+        with mock.patch.object(
+            main_module, "ForwardingLookup", return_value=lookup
+        ) as lookup_cls:
+            _, fake_socket, logger = run_main_with(
+                recv_results, ["--resolver", resolver_arg]
+            )
+        return lookup_cls, fake_socket, logger
+
+    def test_replies_with_answers_from_resolver(self):
+        rdata = bytes([10, 0, 0, 1])
+        answers = [
+            DNSAnswer(name=_REQUEST_QUESTION.name, rdata_length=len(rdata), rdata=rdata)
+        ]
+        lookup_cls, fake_socket, _ = self.run_with_lookup(
+            mock.Mock(return_value=answers),
+            [(_REQUEST, _CLIENT_ADDR), OSError("stop")],
+        )
+
+        lookup_cls.assert_called_once_with(_RESOLVER_ADDR)
+        fake_socket.sendto.assert_called_once_with(
+            build_response(_REQUEST_HEADER, [_REQUEST_QUESTION], answers),
+            _CLIENT_ADDR,
+        )
+
+    def test_drops_query_on_upstream_error_and_keeps_serving(self):
+        lookup = mock.Mock(side_effect=[UpstreamError("timed out"), []])
+        _, fake_socket, logger = self.run_with_lookup(
+            lookup,
+            [(_REQUEST, _CLIENT_ADDR), (_REQUEST, _CLIENT_ADDR), OSError("stop")],
+        )
+
+        logger.warning.assert_called_once()
+        fake_socket.sendto.assert_called_once_with(
+            build_response(_REQUEST_HEADER, [_REQUEST_QUESTION], []), _CLIENT_ADDR
+        )
+
+
+class TestParseAddress(unittest.TestCase):
+    def test_splits_host_and_port(self):
+        self.assertEqual(main_module.parse_address("127.0.0.1:5353"), _RESOLVER_ADDR)
+
+    def test_rejects_invalid_address(self):
+        for value in ("127.0.0.1", "127.0.0.1:", ":5353", "127.0.0.1:abc"):
+            with (
+                self.subTest(value=value),
+                self.assertRaises(main_module.argparse.ArgumentTypeError),
+            ):
+                main_module.parse_address(value)
 
 
 if __name__ == "__main__":
