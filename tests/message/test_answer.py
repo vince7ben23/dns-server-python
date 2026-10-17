@@ -10,7 +10,9 @@ _UINT32_OVERFLOW = 1 << 32
 
 class TestDNSAnswerToBytes(unittest.TestCase):
     def test_stage_expected_answer(self):
-        answer = DNSAnswer(name="codecrafters.io", length=4, data=bytes([8, 8, 8, 8]))
+        answer = DNSAnswer(
+            name="codecrafters.io", rdata_length=4, rdata=bytes([8, 8, 8, 8])
+        )
         self.assertEqual(
             answer.to_bytes(),
             b"\x0ccodecrafters\x02io\x00"  # name
@@ -25,8 +27,8 @@ class TestDNSAnswerToBytes(unittest.TestCase):
         # 用 16 進位讓每個 byte 都不同, 方便直接對照輸出的 byte 順序
         answer = DNSAnswer(
             name="a",
-            length=2,
-            data=b"\xaa\xbb",
+            rdata_length=2,
+            rdata=b"\xaa\xbb",
             record_type=5,
             record_class=0x0102,
             ttl=0x01020304,
@@ -53,23 +55,25 @@ class TestDNSAnswerValidation(unittest.TestCase):
         ]
         for kwargs in cases:
             with self.subTest(**kwargs), self.assertRaises(ValueError):
-                DNSAnswer(name="a", length=4, data=bytes(4), **kwargs)
+                DNSAnswer(name="a", rdata_length=4, rdata=bytes(4), **kwargs)
 
-    def test_rejects_length_overflow(self):
+    def test_rejects_rdata_length_overflow(self):
         with self.assertRaisesRegex(ValueError, "16 bits"):
             DNSAnswer(
                 name="a",
-                length=_UINT16_OVERFLOW,
-                data=bytes(_UINT16_OVERFLOW),
+                rdata_length=_UINT16_OVERFLOW,
+                rdata=bytes(_UINT16_OVERFLOW),
             )
 
-    def test_rejects_length_mismatch(self):
-        for length in (3, 5):
+    def test_rejects_rdata_length_mismatch(self):
+        for rdata_length in (3, 5):
             with (
-                self.subTest(length=length),
+                self.subTest(rdata_length=rdata_length),
                 self.assertRaisesRegex(ValueError, "does not match"),
             ):
-                DNSAnswer(name="a", length=length, data=bytes([8, 8, 8, 8]))
+                DNSAnswer(
+                    name="a", rdata_length=rdata_length, rdata=bytes([8, 8, 8, 8])
+                )
 
 
 if __name__ == "__main__":

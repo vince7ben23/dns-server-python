@@ -8,7 +8,7 @@ _FIELD_BITS = {
     "record_type": 16,
     "record_class": 16,
     "ttl": 32,
-    "length": 16,
+    "rdata_length": 16,
 }
 
 
@@ -17,8 +17,8 @@ class DNSAnswer:
     """DNS answer section RR: Name + Type(2) + Class(2) + TTL(4) + RDLENGTH(2) + RDATA."""
 
     name: str
-    length: int  # RDLENGTH, 須等於 len(data)
-    data: bytes  # RDATA; A record 為 4-byte IPv4 address
+    rdata_length: int  # RDLENGTH, 須等於 len(rdata)
+    rdata: bytes  # RDATA; A record 為 4-byte IPv4 address
     record_type: int = 1  # 1 = A record
     record_class: int = 1  # 1 = IN
     ttl: int = 60
@@ -28,9 +28,10 @@ class DNSAnswer:
             value = getattr(self, field_name)
             if not 0 <= value < (1 << bits):
                 raise ValueError(f"{field_name}={value} does not fit in {bits} bits")
-        if self.length != len(self.data):
+        if self.rdata_length != len(self.rdata):
             raise ValueError(
-                f"length={self.length} does not match data length {len(self.data)}"
+                f"rdata_length={self.rdata_length} does not match rdata length "
+                f"{len(self.rdata)}"
             )
 
     def to_bytes(self) -> bytes:
@@ -41,7 +42,7 @@ class DNSAnswer:
                 self.record_type,
                 self.record_class,
                 self.ttl,
-                self.length,
+                self.rdata_length,
             )
-            + self.data
+            + self.rdata
         )

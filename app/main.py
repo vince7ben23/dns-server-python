@@ -17,7 +17,7 @@ def main():
             logger.debug("Received %d bytes from %s: %r", len(buf), client_addr, buf)
             question = DNSQuestion(name="codecrafters.io")
             answer = DNSAnswer(
-                name="codecrafters.io", length=4, data=b"\x08\x08\x08\x08"
+                name="codecrafters.io", rdata_length=4, rdata=b"\x08\x08\x08\x08"
             )
             header = DNSHeader(
                 packet_identifier=1234,

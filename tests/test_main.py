@@ -47,7 +47,7 @@ class TestMain(unittest.TestCase):
             ).to_bytes()
             + DNSQuestion(name="codecrafters.io").to_bytes()
             + DNSAnswer(
-                name="codecrafters.io", length=4, data=b"\x08\x08\x08\x08"
+                name="codecrafters.io", rdata_length=4, rdata=b"\x08\x08\x08\x08"
             ).to_bytes()
         )
         fake_socket.sendto.assert_called_once_with(expected, CLIENT_ADDR)
