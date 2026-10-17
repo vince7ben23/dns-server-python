@@ -2,11 +2,12 @@ import unittest
 from unittest import mock
 
 from app import main as main_module
-from app.message.answer import DNSAnswer
 from app.message.header import DNSHeader
-from app.message.question import DNSQuestion
+from app.request.parser import HEADER_SIZE, parse_header
+from app.response.builder import build_response
 
 CLIENT_ADDR = ("127.0.0.1", 54321)
+REQUEST = DNSHeader(packet_identifier=1234).to_bytes()
 
 
 def run_main_with(recv_results):
@@ -35,32 +36,34 @@ class TestMain(unittest.TestCase):
         )
         fake_socket.bind.assert_called_once_with(("127.0.0.1", 2053))
 
-    def test_replies_to_client_with_header_question_and_answer(self):
-        _, fake_socket = run_main_with([(b"query", CLIENT_ADDR), OSError("stop")])
-
-        expected = (
-            DNSHeader(
-                packet_identifier=1234,
-                query_response_indicator=1,
-                question_count=1,
-                answer_record_count=1,
-            ).to_bytes()
-            + DNSQuestion(name="codecrafters.io").to_bytes()
-            + DNSAnswer(
-                name="codecrafters.io", rdata_length=4, rdata=b"\x08\x08\x08\x08"
-            ).to_bytes()
+    def test_replies_with_response_built_from_request_header(self):
+        request_header = DNSHeader(packet_identifier=4321, recursion_desired=1)
+        _, fake_socket = run_main_with(
+            [(request_header.to_bytes(), CLIENT_ADDR), OSError("stop")]
         )
+
+        expected = build_response(request_header)
         fake_socket.sendto.assert_called_once_with(expected, CLIENT_ADDR)
 
     def test_replies_to_each_request(self):
         other_addr = ("127.0.0.1", 60000)
         _, fake_socket = run_main_with(
-            [(b"q1", CLIENT_ADDR), (b"q2", other_addr), OSError("stop")]
+            [(REQUEST, CLIENT_ADDR), (REQUEST, other_addr), OSError("stop")]
         )
 
         self.assertEqual(
             [c.args[1] for c in fake_socket.sendto.call_args_list],
             [CLIENT_ADDR, other_addr],
+        )
+
+    def test_drops_malformed_packet_and_keeps_serving(self):
+        too_short = bytes(HEADER_SIZE - 1)
+        _, fake_socket = run_main_with(
+            [(too_short, CLIENT_ADDR), (REQUEST, CLIENT_ADDR), OSError("stop")]
+        )
+
+        fake_socket.sendto.assert_called_once_with(
+            build_response(parse_header(REQUEST)), CLIENT_ADDR
         )
 
     def test_stops_and_logs_on_error(self):

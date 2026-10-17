@@ -1,9 +1,8 @@
 import socket
 
 from app.libs.logger import logger
-from app.message.answer import DNSAnswer
-from app.message.header import DNSHeader
-from app.message.question import DNSQuestion
+from app.request.parser import parse_header
+from app.response.builder import build_response
 
 
 def main():
@@ -15,18 +14,14 @@ def main():
         try:
             buf, client_addr = udp_socket.recvfrom(512)
             logger.debug("Received %d bytes from %s: %r", len(buf), client_addr, buf)
-            question = DNSQuestion(name="codecrafters.io")
-            answer = DNSAnswer(
-                name="codecrafters.io", rdata_length=4, rdata=b"\x08\x08\x08\x08"
-            )
-            header = DNSHeader(
-                packet_identifier=1234,
-                query_response_indicator=1,
-                question_count=1,
-                answer_record_count=1,
-            )
-            response = header.to_bytes() + question.to_bytes() + answer.to_bytes()
+            try:
+                request_header = parse_header(buf)
+            except ValueError as e:
+                # 壞封包只略過, 不讓 server 停掉
+                logger.warning("Dropping malformed packet from %s: %s", client_addr, e)
+                continue
 
+            response = build_response(request_header)
             udp_socket.sendto(response, client_addr)
         except Exception as e:
             logger.exception("Error receiving data: %s", e)
