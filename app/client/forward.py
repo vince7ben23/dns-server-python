@@ -7,7 +7,7 @@ from app.message.question import DNSQuestion
 
 # UDP DNS message 的大小上限
 _MAX_MESSAGE_SIZE = 512
-# 轉送用的 query ID; 每次查詢用新的 socket, 固定值即可對應 reply.
+# 轉送用的 query ID; 每次查詢用新的 socket 且只收一個 reply, 不需靠 ID 配對.
 # client 的 ID 由 server 端從 request header 放回 response
 _QUERY_ID = 0
 
@@ -29,15 +29,11 @@ def build_query(packet_id: int, question: DNSQuestion, recursion_desired: int) -
     return header.to_bytes() + question.to_bytes()
 
 
-def parse_reply(reply: bytes, packet_id: int) -> list[DNSAnswer]:
-    """從 resolver 的 reply 取出 answers; 格式錯誤或不是對應的 reply 時 raise ValueError."""
+def parse_reply(reply: bytes) -> list[DNSAnswer]:
+    """從 resolver 的 reply 取出 answers; 格式錯誤或不是 response 時 raise ValueError."""
     header = parse_header(reply)
     if header.query_response_indicator != 1:
         raise ValueError("reply is not a response")
-    if header.packet_identifier != packet_id:
-        raise ValueError(
-            f"reply id {header.packet_identifier} does not match query id {packet_id}"
-        )
     _, offset = parse_questions(reply, header.question_count)
     answers, _ = parse_answers(reply, header.answer_record_count, offset)
     return answers
@@ -58,7 +54,7 @@ class ForwardingLookup:
                 upstream.settimeout(self.timeout)
                 upstream.sendto(query, self.address)
                 reply, _ = upstream.recvfrom(_MAX_MESSAGE_SIZE)
-            return parse_reply(reply, _QUERY_ID)
+            return parse_reply(reply)
         except (OSError, ValueError) as e:
             raise UpstreamError(
                 f"{self.address} failed for {question.name}: {e}"
