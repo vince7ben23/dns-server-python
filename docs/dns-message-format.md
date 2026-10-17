@@ -104,6 +104,8 @@ Response 裡同一個 name 常重複出現 (上例 question 和 answer 都是 `c
 - 這也是一般 label 長度上限只有 63 (`0b00111111`) 的原因, 見 `app/message/domain_name.py`.
 - 兩個方向都能用, 只是實際上多半出現在 response.
 
+本專案目前的做法: 解析 request 時支援 pointer (`decode_domain_name`), 組 response 時一律不壓縮 (`build_response`).
+
 ## 對應到程式結構
 
 因為格式共用, 程式依 "格式" 和 "方向" 分層:

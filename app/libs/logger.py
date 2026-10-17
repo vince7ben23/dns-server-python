@@ -2,7 +2,7 @@ import logging
 import sys
 
 LOGGER_NAME = "dns_server"
-LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+_LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 
 
 class Logger:
@@ -16,7 +16,7 @@ class Logger:
             logger.setLevel(logging.DEBUG)
 
             handler = logging.StreamHandler(sys.stderr)
-            handler.setFormatter(logging.Formatter(LOG_FORMAT))
+            handler.setFormatter(logging.Formatter(_LOG_FORMAT))
             logger.addHandler(handler)
             logger.propagate = False
 

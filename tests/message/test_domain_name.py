@@ -25,7 +25,9 @@ class TestEncodeDomainName(unittest.TestCase):
                 encode_domain_name(name)
 
     def test_accepts_label_of_63_bytes(self):
-        self.assertEqual(encode_domain_name("a" * 63), b"\x3f" + b"a" * 63 + b"\x00")
+        self.assertEqual(
+            encode_domain_name("a" * 63), bytes([63]) + b"a" * 63 + b"\x00"
+        )
 
     def test_rejects_label_longer_than_63_bytes(self):
         with self.assertRaises(ValueError):

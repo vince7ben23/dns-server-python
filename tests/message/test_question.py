@@ -22,10 +22,13 @@ class TestDNSQuestionToBytes(unittest.TestCase):
 
 class TestDNSQuestionValidation(unittest.TestCase):
     def test_rejects_field_overflow(self):
-        with self.assertRaises(ValueError):
-            DNSQuestion(name="a", record_type=_UINT16_OVERFLOW)
-        with self.assertRaises(ValueError):
-            DNSQuestion(name="a", record_class=-1)
+        cases = [
+            {"record_type": _UINT16_OVERFLOW},
+            {"record_class": -1},
+        ]
+        for kwargs in cases:
+            with self.subTest(**kwargs), self.assertRaises(ValueError):
+                DNSQuestion(name="a", **kwargs)
 
 
 if __name__ == "__main__":

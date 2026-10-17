@@ -6,7 +6,7 @@ OPCODE_STANDARD_QUERY = 0
 RCODE_NO_ERROR = 0
 RCODE_NOT_IMPLEMENTED = 4
 # 目前 answer 固定回 8.8.8.8
-ANSWER_RDATA = bytes([8, 8, 8, 8])
+_ANSWER_RDATA = bytes([8, 8, 8, 8])
 
 
 def build_response(
@@ -34,8 +34,8 @@ def build_response(
     response_answers = [
         DNSAnswer(
             name=question.name,
-            rdata_length=len(ANSWER_RDATA),
-            rdata=ANSWER_RDATA,
+            rdata_length=len(_ANSWER_RDATA),
+            rdata=_ANSWER_RDATA,
         )
         for question in request_questions
     ]

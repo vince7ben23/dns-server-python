@@ -11,7 +11,7 @@ app/
 │   ├── header.py        DNSHeader: 12-byte header 與 flags 編碼
 │   ├── question.py      DNSQuestion: question section
 │   ├── answer.py        DNSAnswer: answer section (resource record)
-│   └── domain_name.py   domain name 的 label 編碼與解碼
+│   └── domain_name.py   domain name 的 label 編碼與解碼 (解碼支援 compression pointer)
 ├── request/
 │   └── parser.py        bytes → message: 解析收到的 query
 ├── response/

@@ -3,6 +3,8 @@ from dataclasses import dataclass
 
 from app.message.domain_name import encode_domain_name
 
+# question 在 name 之後的固定長度: type(2) + class(2)
+QUESTION_TYPE_CLASS_SIZE = 4
 # 各欄位的 bit 寬度, 用於驗證數值範圍
 _FIELD_BITS = {
     "record_type": 16,

@@ -1,14 +1,8 @@
 import unittest
 
-from app.message.header import DNSHeader
-from app.message.question import DNSQuestion
-from app.request.parser import (
-    HEADER_SIZE,
-    QUESTION_TYPE_CLASS_SIZE,
-    parse_header,
-    parse_question,
-    parse_questions,
-)
+from app.message.header import HEADER_SIZE, DNSHeader
+from app.message.question import QUESTION_TYPE_CLASS_SIZE, DNSQuestion
+from app.request.parser import parse_header, parse_question, parse_questions
 
 # 高 2 bits 為 11 的 length byte, 代表 compression pointer
 _COMPRESSION_POINTER_BYTE = 192

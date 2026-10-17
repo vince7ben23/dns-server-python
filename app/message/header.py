@@ -1,6 +1,8 @@
 import struct
 from dataclasses import dataclass
 
+# DNS header 固定 12 bytes
+HEADER_SIZE = 12
 # 各欄位的 bit 寬度, 用於驗證數值範圍
 _FIELD_BITS = {
     "packet_identifier": 16,

@@ -1,13 +1,8 @@
 import struct
 
 from app.message.domain_name import decode_domain_name
-from app.message.header import DNSHeader
-from app.message.question import DNSQuestion
-
-# DNS header 固定 12 bytes
-HEADER_SIZE = 12
-# question 在 name 之後的固定長度: type(2) + class(2)
-QUESTION_TYPE_CLASS_SIZE = 4
+from app.message.header import HEADER_SIZE, DNSHeader
+from app.message.question import QUESTION_TYPE_CLASS_SIZE, DNSQuestion
 
 
 def parse_header(request: bytes) -> DNSHeader:
@@ -63,7 +58,10 @@ def parse_question(
 def parse_questions(
     request: bytes, count: int, offset: int = HEADER_SIZE
 ) -> tuple[list[DNSQuestion], int]:
-    """從 offset 依序解析 count 個 question, 回傳 (questions, 下一個 section 的 offset)."""
+    """從 offset 依序解析 count 個 question.
+
+    回傳 (questions, 下一個 section 的 offset).
+    """
     questions = []
     for _ in range(count):
         question, offset = parse_question(request, offset)

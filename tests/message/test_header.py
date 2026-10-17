@@ -1,17 +1,19 @@
 import unittest
 
-from app.message.header import DNSHeader
+from app.message.header import HEADER_SIZE, DNSHeader
 
 # 16-bit 欄位可容納的最小溢位值
 _UINT16_OVERFLOW = 1 << 16
 
 
 class TestDNSHeaderToBytes(unittest.TestCase):
-    def test_header_is_12_bytes(self):
-        self.assertEqual(len(DNSHeader().to_bytes()), 12)
+    def test_header_size_is_12_bytes(self):
+        # 規格值, 刻意寫死 12 而不是只比對 HEADER_SIZE
+        self.assertEqual(HEADER_SIZE, 12)
+        self.assertEqual(len(DNSHeader().to_bytes()), HEADER_SIZE)
 
     def test_default_header_is_all_zero(self):
-        self.assertEqual(DNSHeader().to_bytes(), bytes(12))
+        self.assertEqual(DNSHeader().to_bytes(), bytes(HEADER_SIZE))
 
     def test_packet_identifier_is_big_endian(self):
         # 1234 = 4 * 256 + 210
@@ -72,12 +74,15 @@ class TestDNSHeaderToBytes(unittest.TestCase):
 
 class TestDNSHeaderValidation(unittest.TestCase):
     def test_rejects_field_overflow(self):
-        with self.assertRaises(ValueError):
-            DNSHeader(query_response_indicator=2)
-        with self.assertRaises(ValueError):
-            DNSHeader(operation_code=16)
-        with self.assertRaises(ValueError):
-            DNSHeader(packet_identifier=_UINT16_OVERFLOW)
+        cases = [
+            {"query_response_indicator": 2},
+            {"operation_code": 16},
+            {"packet_identifier": _UINT16_OVERFLOW},
+            {"response_code": -1},
+        ]
+        for kwargs in cases:
+            with self.subTest(**kwargs), self.assertRaises(ValueError):
+                DNSHeader(**kwargs)
 
 
 if __name__ == "__main__":

@@ -1,9 +1,9 @@
 import unittest
 
 from app.message.answer import DNSAnswer
-from app.message.header import DNSHeader
+from app.message.header import HEADER_SIZE, DNSHeader
 from app.message.question import DNSQuestion
-from app.request.parser import HEADER_SIZE, parse_header
+from app.request.parser import parse_header
 from app.response.builder import (
     OPCODE_STANDARD_QUERY,
     RCODE_NO_ERROR,
@@ -18,6 +18,11 @@ def response_header(
     request_header: DNSHeader, questions: list[DNSQuestion] = _QUESTIONS
 ) -> DNSHeader:
     return parse_header(build_response(request_header, questions))
+
+
+def answer_for(name: str) -> DNSAnswer:
+    rdata = bytes([8, 8, 8, 8])  # 8.8.8.8
+    return DNSAnswer(name=name, rdata_length=len(rdata), rdata=rdata)
 
 
 class TestBuildResponseHeader(unittest.TestCase):
@@ -66,11 +71,6 @@ class TestBuildResponseHeader(unittest.TestCase):
                 self.assertEqual(header.answer_record_count, count)
                 self.assertEqual(header.authority_record_count, 0)
                 self.assertEqual(header.additional_record_count, 0)
-
-
-def answer_for(name: str) -> DNSAnswer:
-    rdata = bytes([8, 8, 8, 8])  # 8.8.8.8
-    return DNSAnswer(name=name, rdata_length=len(rdata), rdata=rdata)
 
 
 class TestBuildResponseBody(unittest.TestCase):
