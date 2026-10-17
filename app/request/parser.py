@@ -1,9 +1,13 @@
 import struct
 
+from app.message.domain_name import decode_domain_name
 from app.message.header import DNSHeader
+from app.message.question import DNSQuestion
 
 # DNS header 固定 12 bytes
 HEADER_SIZE = 12
+# question 在 name 之後的固定長度: type(2) + class(2)
+QUESTION_TYPE_CLASS_SIZE = 4
 
 
 def parse_header(request: bytes) -> DNSHeader:
@@ -37,3 +41,20 @@ def parse_header(request: bytes) -> DNSHeader:
         authority_record_count=authority_record_count,
         additional_record_count=additional_record_count,
     )
+
+
+def parse_question(
+    request: bytes, offset: int = HEADER_SIZE
+) -> tuple[DNSQuestion, int]:
+    """從 offset 解析一個 question, 回傳 (question, 下一個 section 的 offset)."""
+    name, offset = decode_domain_name(request, offset)
+    if offset + QUESTION_TYPE_CLASS_SIZE > len(request):
+        raise ValueError(
+            f"question type and class need {QUESTION_TYPE_CLASS_SIZE} bytes, "
+            f"got {len(request) - offset}"
+        )
+    record_type, record_class = struct.unpack_from("!2H", request, offset)
+    question = DNSQuestion(
+        name=name, record_type=record_type, record_class=record_class
+    )
+    return question, offset + QUESTION_TYPE_CLASS_SIZE

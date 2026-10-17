@@ -1,7 +1,13 @@
 import unittest
 
 from app.message.header import DNSHeader
-from app.request.parser import HEADER_SIZE, parse_header
+from app.message.question import DNSQuestion
+from app.request.parser import (
+    HEADER_SIZE,
+    QUESTION_TYPE_CLASS_SIZE,
+    parse_header,
+    parse_question,
+)
 
 
 def header_bytes(flags_high: int = 0, flags_low: int = 0) -> bytes:
@@ -61,6 +67,37 @@ class TestParseHeader(unittest.TestCase):
     def test_rejects_data_shorter_than_header(self):
         with self.assertRaises(ValueError):
             parse_header(bytes(HEADER_SIZE - 1))
+
+
+class TestParseQuestion(unittest.TestCase):
+    def test_round_trip_after_header(self):
+        question = DNSQuestion(name="codecrafters.io")
+        data = header_bytes() + question.to_bytes()
+
+        self.assertEqual(parse_question(data), (question, len(data)))
+
+    def test_type_and_class_are_big_endian(self):
+        data = header_bytes() + b"\x01a\x00" + bytes([0, 5, 1, 2])
+        question, _ = parse_question(data)
+
+        self.assertEqual(question.record_type, 5)
+        self.assertEqual(question.record_class, 258)  # 1 * 256 + 2
+
+    def test_starts_from_given_offset(self):
+        question = DNSQuestion(name="a")
+        offset = 5
+        data = bytes(offset) + question.to_bytes()
+
+        self.assertEqual(parse_question(data, offset), (question, len(data)))
+
+    def test_rejects_missing_type_and_class(self):
+        data = header_bytes() + b"\x01a\x00" + bytes(QUESTION_TYPE_CLASS_SIZE - 1)
+        with self.assertRaisesRegex(ValueError, "type and class"):
+            parse_question(data)
+
+    def test_rejects_malformed_name(self):
+        with self.assertRaises(ValueError):
+            parse_question(header_bytes() + b"\x03ab")
 
 
 if __name__ == "__main__":

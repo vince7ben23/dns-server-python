@@ -23,3 +23,30 @@ def encode_domain_name(name: str) -> bytes:
     if len(encoded) > _MAX_NAME_LENGTH:
         raise ValueError(f"encoded name exceeds {_MAX_NAME_LENGTH} bytes")
     return bytes(encoded)
+
+
+def decode_domain_name(data: bytes, offset: int) -> tuple[str, int]:
+    """從 offset 開始解析 label 序列, 回傳 (name, 結尾 null byte 之後的 offset)."""
+    start = offset
+    labels = []
+    while True:
+        if offset >= len(data):
+            raise ValueError("domain name is missing its null terminator")
+        length = data[offset]
+        offset += 1
+        if length == 0:
+            break
+        # 高 2 bits 非 0 代表 compression pointer 或保留值, 目前不支援
+        if length > _MAX_LABEL_LENGTH:
+            raise ValueError(f"unsupported label length byte {length}")
+        if offset + length > len(data):
+            raise ValueError("label content exceeds data length")
+        try:
+            labels.append(data[offset : offset + length].decode("ascii"))
+        except UnicodeDecodeError:
+            raise ValueError("label must be ASCII") from None
+        offset += length
+        if offset - start >= _MAX_NAME_LENGTH:
+            # 還沒讀到 null byte 就已達上限, 加上 null byte 必定超過
+            raise ValueError(f"encoded name exceeds {_MAX_NAME_LENGTH} bytes")
+    return ".".join(labels), offset

@@ -7,10 +7,11 @@ from app.request.parser import HEADER_SIZE, parse_header
 from app.response.builder import build_response
 
 _RCODE_NOT_IMPLEMENTED = 4
+QUESTION = DNSQuestion(name="codecrafters.io")
 
 
 def response_header(request_header: DNSHeader) -> DNSHeader:
-    return parse_header(build_response(request_header))
+    return parse_header(build_response(request_header, QUESTION))
 
 
 class TestBuildResponseHeader(unittest.TestCase):
@@ -58,14 +59,15 @@ class TestBuildResponseHeader(unittest.TestCase):
 
 
 class TestBuildResponseBody(unittest.TestCase):
-    def test_question_and_answer_follow_header(self):
+    def test_question_and_answer_mimic_request_name(self):
+        question = DNSQuestion(name="example.com")
         expected = (
-            DNSQuestion(name="codecrafters.io").to_bytes()
+            question.to_bytes()
             + DNSAnswer(
-                name="codecrafters.io", rdata_length=4, rdata=bytes([8, 8, 8, 8])
+                name="example.com", rdata_length=4, rdata=bytes([8, 8, 8, 8])
             ).to_bytes()
         )
-        self.assertEqual(build_response(DNSHeader())[HEADER_SIZE:], expected)
+        self.assertEqual(build_response(DNSHeader(), question)[HEADER_SIZE:], expected)
 
 
 if __name__ == "__main__":
