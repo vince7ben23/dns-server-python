@@ -1,7 +1,7 @@
 import socket
 
 from app.libs.logger import logger
-from app.request.parser import parse_header, parse_questions
+from app.message.parser import parse_header, parse_questions
 from app.response.builder import build_response
 
 
