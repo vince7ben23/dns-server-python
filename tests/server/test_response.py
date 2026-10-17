@@ -4,7 +4,7 @@ from app.message.answer import DNSAnswer
 from app.message.header import HEADER_SIZE, DNSHeader
 from app.message.parser import parse_header
 from app.message.question import DNSQuestion
-from app.response.builder import (
+from app.server.response import (
     OPCODE_STANDARD_QUERY,
     RCODE_NO_ERROR,
     RCODE_NOT_IMPLEMENTED,

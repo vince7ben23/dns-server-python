@@ -13,8 +13,8 @@ app/
 │   ├── answer.py        DNSAnswer: answer section (resource record)
 │   ├── domain_name.py   domain name 的 label 編碼與解碼 (解碼支援 compression pointer)
 │   └── parser.py        bytes → message: 解析任一方向的 DNS message
-├── response/
-│   └── builder.py       message → bytes: 決定回應內容並編碼
+├── server/              我們作為 DNS server 的行為
+│   └── response.py      決定回應內容並編碼成 bytes
 └── libs/
     └── logger.py        全域 logger
 tests/                   結構與 app/ 對應: tests/<pkg>/test_<mod>.py ↔ app/<pkg>/<mod>.py
@@ -27,7 +27,7 @@ test_client.py           送任意 UDP payload 給 server 的小工具
 ### 分層
 
 - **`message/`**: DNS query 與 response 是同一種 message 格式 (RFC 1035 §4.1), 方向只靠 header 的 QR 等欄位區分, 所以各 section 的 dataclass 與編碼, 以及 bytes → 物件的解析都放在這裡共用.
-- **`response/`**: 依 request 決定要回什麼, 再編碼成 bytes.
+- **`server/`**: 我們作為 server 的行為: 依 request 決定要回什麼, 再編碼成 bytes.
 
 ## 開發
 

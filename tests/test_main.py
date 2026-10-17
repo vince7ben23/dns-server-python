@@ -4,7 +4,7 @@ from unittest import mock
 from app import main as main_module
 from app.message.header import HEADER_SIZE, DNSHeader
 from app.message.question import DNSQuestion
-from app.response.builder import build_response
+from app.server.response import build_response
 
 _CLIENT_ADDR = ("127.0.0.1", 54321)
 _REQUEST_HEADER = DNSHeader(packet_identifier=1234, question_count=1)

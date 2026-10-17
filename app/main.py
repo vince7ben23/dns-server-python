@@ -2,7 +2,7 @@ import socket
 
 from app.libs.logger import logger
 from app.message.parser import parse_header, parse_questions
-from app.response.builder import build_response
+from app.server.response import build_response
 
 
 def main():
